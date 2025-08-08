@@ -57,9 +57,11 @@ function endSelect() {
     const word = selectedLetters.join("");
     if (dictionary.has(word)) {
       giveKey(word.length);
+      removeWordTiles(currentPath.map(el => parseInt(el.dataset.index)));
       showMessage(`Found word: ${word}`);
     }
   }
+
   currentPath.forEach(el => el.style.background = "");
   selectedLetters = [];
   currentPath = [];
@@ -131,29 +133,21 @@ function resetGame() {
 }
 
 function setupDragAndDrop() {
-  document.querySelectorAll(".key").forEach(setupDrag);
   const combiner = document.getElementById("combiner");
   const trash = document.getElementById("trash");
+  const keyArea = document.getElementById("keys");
 
-  [combiner, trash].forEach(area => {
+  [combiner, trash, keyArea].forEach(area => {
     area.addEventListener("dragover", e => e.preventDefault());
   });
 
   combiner.addEventListener("drop", e => {
     e.preventDefault();
-    const dragged = document.querySelectorAll(".dragging");
-    if (dragged.length === 2) {
-      const t1 = dragged[0].dataset.type;
-      const t2 = dragged[1].dataset.type;
-      if (t1 === t2) {
-        let upgrade = t1 === "wood" ? "stone" : t1 === "stone" ? "gold" : null;
-        if (upgrade) {
-          dragged.forEach(k => k.remove());
-          giveKey(upgrade === "stone" ? 4 : 5);
-          showMessage(`🔁 Combined to make a ${upgrade} key!`);
-        }
-      }
-    }
+    const dragging = document.querySelector(".dragging");
+    if (!dragging) return;
+
+    combiner.appendChild(dragging);
+    checkCombinerKeys();
   });
 
   trash.addEventListener("drop", e => {
@@ -161,6 +155,38 @@ function setupDragAndDrop() {
     document.querySelectorAll(".dragging").forEach(k => k.remove());
     showMessage("🗑️ Key deleted");
   });
+
+  keyArea.addEventListener("drop", e => {
+    e.preventDefault();
+    const dragging = document.querySelector(".dragging");
+    if (dragging) {
+      keyArea.appendChild(dragging);
+    }
+  });
+}
+
+function checkCombinerKeys() {
+  const combiner = document.getElementById("combiner");
+  const keys = combiner.querySelectorAll(".key");
+
+  if (keys.length >= 2) {
+    const [k1, k2] = keys;
+    const t1 = k1.dataset.type;
+    const t2 = k2.dataset.type;
+
+    if (t1 === t2) {
+      let upgraded = null;
+      if (t1 === "wood") upgraded = "stone";
+      else if (t1 === "stone") upgraded = "gold";
+
+      if (upgraded) {
+        k1.remove();
+        k2.remove();
+        giveKey(upgraded === "stone" ? 4 : 5);
+        showMessage(`🔁 Combined into a ${upgraded} key!`);
+      }
+    }
+  }
 }
 
 function setupDrag(el) {
@@ -175,4 +201,40 @@ function setupDrag(el) {
 
 function showMessage(msg) {
   document.getElementById("message").textContent = msg;
+}
+function removeWordTiles(indices) {
+  const grid = document.getElementById("letter-grid");
+  const tiles = Array.from(grid.children);
+  const columns = 5;
+
+  // Clear letters from selected tiles
+  indices.forEach(i => {
+    tiles[i].textContent = "";
+  });
+
+  // Apply gravity
+  for (let col = 0; col < columns; col++) {
+    let columnTiles = [];
+
+    for (let row = 4; row >= 0; row--) {
+      const idx = row * columns + col;
+      const letter = tiles[idx].textContent;
+      if (letter !== "") columnTiles.push(letter);
+    }
+
+    // Fill column from bottom up
+    for (let row = 4; row >= 0; row--) {
+      const idx = row * columns + col;
+      if (columnTiles.length > 0) {
+        tiles[idx].textContent = columnTiles.shift();
+      } else {
+        tiles[idx].textContent = getRandomLetter();
+      }
+    }
+  }
+}
+
+function getRandomLetter() {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  return letters[Math.floor(Math.random() * letters.length)];
 }
