@@ -57,7 +57,8 @@ function setupBoard() {
     gridEl.appendChild(div);
   }
 
-  document.addEventListener("mouseup", endSelect);
+document.removeEventListener("mouseup", endSelect);
+document.addEventListener("mouseup", endSelect);
 }
 
 function startSelect(e) {
@@ -160,14 +161,21 @@ function setupLocks() {
 }
 
 function resetGame() {
-  document.querySelectorAll(".lock").forEach(lock => {
-    lock.classList.remove("failed");
-    lock.innerHTML = `<img src="sprites/lock_${lock.dataset.type}.png" />`;
-  });
-  document.getElementById("keys").innerHTML = "";
-  setupLocks();
-  setupBoard();
-  showMessage("🔁 New round!");
+  const grid = document.getElementById("letter-grid");
+  grid.style.opacity = 0;
+
+  setTimeout(() => {
+    grid.style.opacity = 1;
+    document.querySelectorAll(".lock").forEach(lock => {
+      lock.classList.remove("failed");
+      lock.innerHTML = `<img src="sprites/lock_${lock.dataset.type}.png" />`;
+    });
+
+    document.getElementById("keys").innerHTML = "";
+    setupLocks();
+    setupBoard();
+    showMessage("🔁 New round!");
+  }, 500);
 }
 
 function setupDragAndDrop() {
