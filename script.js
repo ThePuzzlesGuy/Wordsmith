@@ -23,12 +23,48 @@ async function loadWords() {
 function setupBoard() {
   const grid = document.getElementById("letter-grid");
   grid.innerHTML = "";
+  const boardSize = 5;
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-  for (let i = 0; i < 25; i++) {
+  // Create 5x5 empty board
+  let board = Array.from({ length: boardSize * boardSize }, () => "");
+
+  // Choose a random word from the dictionary (length 3–6)
+  const possibleWords = Array.from(dictionary).filter(w => w.length >= 3 && w.length <= 6);
+  const word = possibleWords[Math.floor(Math.random() * possibleWords.length)];
+
+  // Pick random start location and direction (horizontal or vertical)
+  const dir = Math.random() < 0.5 ? "horizontal" : "vertical";
+  const maxStart = boardSize - word.length;
+  let placed = false;
+
+  for (let attempts = 0; attempts < 100 && !placed; attempts++) {
+    let startRow = Math.floor(Math.random() * boardSize);
+    let startCol = Math.floor(Math.random() * boardSize);
+    if ((dir === "horizontal" && startCol <= maxStart) ||
+        (dir === "vertical" && startRow <= maxStart)) {
+      placed = true;
+      for (let i = 0; i < word.length; i++) {
+        const r = startRow + (dir === "vertical" ? i : 0);
+        const c = startCol + (dir === "horizontal" ? i : 0);
+        const index = r * boardSize + c;
+        board[index] = word[i];
+      }
+    }
+  }
+
+  // Fill remaining tiles with random letters
+  for (let i = 0; i < board.length; i++) {
+    if (board[i] === "") {
+      board[i] = getRandomLetter();
+    }
+  }
+
+  // Render board
+  for (let i = 0; i < board.length; i++) {
     const div = document.createElement("div");
     div.className = "letter";
-    div.textContent = letters[Math.floor(Math.random() * letters.length)];
+    div.textContent = board[i];
     div.dataset.index = i;
     div.addEventListener("mousedown", startSelect);
     div.addEventListener("mouseenter", continueSelect);
