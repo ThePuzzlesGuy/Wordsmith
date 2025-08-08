@@ -25,6 +25,29 @@ body {
   grid-gap: 8px;
 }
 
+/* Never select letters (and stop Safari/old Edge weirdness) */
+#letter-grid, #letter-grid .letter {
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  -moz-user-select: none;
+  -webkit-tap-highlight-color: transparent; /* mobile flash */
+  touch-action: none; /* stops touch scrolling while dragging */
+}
+
+/* While dragging, disable selection app-wide just in case */
+.no-select {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+/* Also prevent dragging lock/key images as “ghost images” */
+img {
+  -webkit-user-drag: none;
+  user-drag: none;
+  pointer-events: auto; /* still clickable/draggable via our code */
+}
+
 .letter {
   width: 60px;
   height: 60px;
