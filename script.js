@@ -3,7 +3,7 @@ let validWords = [];
 let hiddenLock = '';
 let currentPath = [];
 let selectedLetters = [];
-let completedBoards = JSON.parse(localStorage.getItem("completedBoards") || "[]");
+// let completedBoards = JSON.parse(localStorage.getItem("completedBoards") || "[]");
 
 document.addEventListener("DOMContentLoaded", async () => {
   await loadBoards();
@@ -38,7 +38,7 @@ function setupBoard() {
   // Find actual index in full boards list
   const actualIndex = boards.indexOf(board);
   completedBoards.push(actualIndex);
-  localStorage.setItem("completedBoards", JSON.stringify(completedBoards));
+  // localStorage.setItem("completedBoards", JSON.stringify(completedBoards));
 
   // Store theme + words
   const grid = board.grid;
