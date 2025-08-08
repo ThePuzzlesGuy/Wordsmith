@@ -1,1 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wordsmith</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>🔑 Wordsmith</h1>
 
+  <div id="game">
+    <div id="letter-grid"></div>
+
+    <div id="locks">
+      <div class="lock" data-type="wood"><img src="sprites/lock_wood.png" /></div>
+      <div class="lock" data-type="stone"><img src="sprites/lock_stone.png" /></div>
+      <div class="lock" data-type="gold"><img src="sprites/lock_gold.png" /></div>
+    </div>
+
+    <div id="inventory">
+      <h2>Inventory</h2>
+      <div id="keys"></div>
+      <div id="combiner">Combine Here</div>
+      <div id="trash">Trash</div>
+    </div>
+  </div>
+
+  <div id="message"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
