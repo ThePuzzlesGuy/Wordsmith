@@ -7,44 +7,75 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>🔑 Wordsmith</h1>
-  <div id="theme"></div>
-
-  <div id="game">
-    <div id="letter-grid"></div>
-
-    <div id="locks">
-      <div class="lock" data-type="wood"><img src="sprites/lock_wood.png" /></div>
-      <div class="lock" data-type="stone"><img src="sprites/lock_stone.png" /></div>
-      <div class="lock" data-type="gold"><img src="sprites/lock_gold.png" /></div>
+ <header class="topbar">
+  <div class="topbar-inner">
+    <h1 class="title">WORDSMITH</h1>
+    <div class="topbar-icons">
+      <button class="icon-btn" aria-label="Profile">👤</button>
+      <button class="icon-btn" aria-label="Settings">⚙️</button>
     </div>
+  </div>
+</header>
 
-<div id="inventory">
-  <h2>Key Inventory</h2>
-
-  <div id="inventory-ui">
-    <div class="inventory-section" id="inventory-keys">
-      <label>Inventory</label>
-      <div id="keys" class="key-box"></div>
-    </div>
-
-    <div class="inventory-section" id="inventory-combine">
-      <label>Combiner</label>
-      <div id="combiner" class="drop-zone">
-        <span class="zone-icon">➕</span>
+<main id="app">
+  <section class="play-area">
+    <!-- Locks row -->
+    <div class="locks-strip">
+      <div id="locks" class="locks">
+        <div class="lock" data-type="wood"><img src="sprites/lock_wood.png" alt=""></div>
+        <div class="lock" data-type="stone"><img src="sprites/lock_stone.png" alt=""></div>
+        <div class="lock" data-type="gold"><img src="sprites/lock_gold.png" alt=""></div>
       </div>
     </div>
 
-    <div class="inventory-section" id="inventory-trash">
-      <label>Trash</label>
-      <div id="trash" class="drop-zone">
-        <span class="zone-icon">🗑️</span>
+    <!-- Parchment board -->
+    <div class="board-wrap">
+      <div class="parchment">
+        <div id="theme" class="board-theme">Theme: —</div>
+        <div id="letter-grid" class="grid"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Right sidebar: legend + combiner stack -->
+  <aside class="sidebar">
+    <div class="legend card">
+      <ul>
+        <li><img class="legend-key" src="sprites/key_wood.png" alt=""> 3 Letters</li>
+        <li><img class="legend-key" src="sprites/key_stone.png" alt=""> 4 Letters</li>
+        <li><img class="legend-key" src="sprites/key_gold.png" alt=""> 5+ Letters</li>
+      </ul>
+    </div>
+
+    <div class="combine card">
+      <div class="slot-stack">
+        <div id="combiner" class="drop-zone combiner-visual">
+          <!-- single drop zone (JS unchanged) but visually shows 2 slots + plus -->
+          <div class="fake-slot a"></div>
+          <div class="plus">+</div>
+          <div class="fake-slot b"></div>
+        </div>
+        <div id="trash" class="drop-zone trash-visual">
+          <span class="trash-icon">🗑️</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<!-- Bottom inventory dock -->
+<footer class="inventory-dock">
+  <div id="inventory" class="inventory">
+    <h2>Inventory</h2>
+    <div id="inventory-ui">
+      <div class="inventory-section">
+        <div id="keys" class="key-row"></div>
       </div>
     </div>
   </div>
-</div>
+</footer>
 
-  <div id="message"></div>
-  <script src="script.js"></script>
+<div id="message" class="toast"></div>
+
 </body>
 </html>
