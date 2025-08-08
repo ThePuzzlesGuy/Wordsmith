@@ -19,13 +19,30 @@
       <div class="lock" data-type="gold"><img src="sprites/lock_gold.png" /></div>
     </div>
 
-    <div id="inventory">
-      <h2>Inventory</h2>
-      <div id="keys"></div>
-      <div id="combiner">Combine Here</div>
-      <div id="trash">Trash</div>
+<div id="inventory">
+  <h2>Key Inventory</h2>
+
+  <div id="inventory-ui">
+    <div class="inventory-section" id="inventory-keys">
+      <label>Inventory</label>
+      <div id="keys" class="key-box"></div>
+    </div>
+
+    <div class="inventory-section" id="inventory-combine">
+      <label>Combiner</label>
+      <div id="combiner" class="drop-zone">
+        <span class="zone-icon">➕</span>
+      </div>
+    </div>
+
+    <div class="inventory-section" id="inventory-trash">
+      <label>Trash</label>
+      <div id="trash" class="drop-zone">
+        <span class="zone-icon">🗑️</span>
+      </div>
     </div>
   </div>
+</div>
 
   <div id="message"></div>
   <script src="script.js"></script>
