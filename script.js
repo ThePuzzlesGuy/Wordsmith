@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupBoard();
   setupDragAndDrop();
 
-  // allow click anywhere on popup to dismiss
+  // click anywhere on popup to dismiss
   const popup = document.getElementById('popup');
   popup?.addEventListener('click', () => popup.classList.add('hidden'));
 });
@@ -28,7 +28,7 @@ function setupBoard() {
   // choose an unused board
   const unusedBoards = boards.filter((_, i) => !completedBoards.includes(i));
   if (unusedBoards.length === 0) {
-    showMessage("🎉 You've completed all puzzles!", { sticky: true });
+    showMessage("You've found the scroll!", { sticky: true }); // end-state message if you want
     return;
   }
   const randomIndex = Math.floor(Math.random() * unusedBoards.length);
@@ -87,13 +87,14 @@ function continueSelect(e) {
 function endSelect() {
   const word = selectedLetters.join("");
 
+  // Generate key on valid word, but NO popup
   if (selectedLetters.length >= 3 && validWords.includes(word)) {
     giveKey(word.length);
     markUsedTiles(currentPath);
-    showMessage(`Found word: ${word}`);
+    // no showMessage here
   } else if (selectedLetters.length >= 3) {
     invalidWordFeedback(currentPath);
-    showMessage(`"${word}" is not a valid word.`);
+    // no popup for invalid word per request
   }
 
   currentPath.forEach(el => el.style.background = "");
@@ -154,7 +155,7 @@ function setupLocks() {
       if (keyType === lockType) {
         draggingKey.remove();
         if (lockType === hiddenLock) {
-          showMessage("🔓 You found the scroll!");
+          showMessage("You've found the scroll!");
           const scroll = document.createElement("img");
           scroll.src = "sprites/scroll.png";
           scroll.style.position = "absolute";
@@ -165,10 +166,10 @@ function setupLocks() {
           setTimeout(() => resetGame(), 1500);
         } else {
           lock.classList.add("failed");
-          showMessage("❌ Wrong lock.");
+          showMessage("Nothing behind this lock...");
         }
       } else {
-        showMessage("❌ That key doesn't fit this lock.");
+        // no popup here; mismatch feedback can be visual jiggle only if you want
       }
     });
   });
@@ -185,12 +186,24 @@ function resetGame() {
       lock.innerHTML = `<img src="sprites/lock_${lock.dataset.type}.png" />`;
     });
 
-    // clear inventory
-    document.getElementById("keys").innerHTML = "";
+    // clear inventory keys BUT KEEP SLOTS (fixes disappearing slots)
+    clearInventoryKeys();
+
     setupLocks();
     setupBoard();
-    showMessage("🔁 New round!");
+    // no "new round" popup
   }, 500);
+}
+
+function clearInventoryKeys() {
+  const keyGrid = document.getElementById("keys");
+  keyGrid.querySelectorAll('.key').forEach(k => k.remove());
+  // also clear combiner slots
+  const { a:slotA, b:slotB } = getCombinerSlots();
+  [slotA, slotB].forEach(s => {
+    s.querySelectorAll('.key').forEach(k => k.remove());
+    s.classList.remove('has-key');
+  });
 }
 
 function setupDragAndDrop() {
@@ -217,11 +230,10 @@ function setupDragAndDrop() {
     });
   });
 
-  // Trash
+  // Trash — no popup, just delete
   trash.addEventListener("drop", e => {
     e.preventDefault();
     document.querySelectorAll(".dragging").forEach(k => k.remove());
-    showMessage("🗑️ Key deleted");
     [slotA, slotB].forEach(s => s.classList.toggle('has-key', !!s.querySelector('.key')));
   });
 
@@ -260,7 +272,10 @@ function checkCombinerKeys() {
 
   // output to inventory
   giveKey(upgraded === "stone" ? 4 : 5);
-  showMessage(`🔁 Combined into a ${upgraded} key!`);
+
+  // success popup with requested phrasing
+  const label = upgraded.charAt(0).toUpperCase() + upgraded.slice(1);
+  showMessage(`You've successfully crafted a ${label} key!`);
 }
 
 function getCombinerSlots(){
@@ -271,7 +286,7 @@ function getCombinerSlots(){
   };
 }
 
-/* Popup-based messaging (replaces bottom text) */
+/* Popup-based messaging */
 function showMessage(msg, opts = {}) {
   const popup = document.getElementById('popup');
   const txt = document.getElementById('popup-text');
