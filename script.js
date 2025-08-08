@@ -3,14 +3,17 @@ let validWords = [];
 let hiddenLock = '';
 let currentPath = [];
 let selectedLetters = [];
-let completedBoards = [];
-// let completedBoards = JSON.parse(localStorage.getItem("completedBoards") || "[]");
+let completedBoards = []; // session-only rotation
 
 document.addEventListener("DOMContentLoaded", async () => {
   await loadBoards();
   setupLocks();
   setupBoard();
   setupDragAndDrop();
+
+  // allow click anywhere on popup to dismiss
+  const popup = document.getElementById('popup');
+  popup?.addEventListener('click', () => popup.classList.add('hidden'));
 });
 
 async function loadBoards() {
@@ -22,31 +25,26 @@ function setupBoard() {
   const gridEl = document.getElementById("letter-grid");
   gridEl.innerHTML = "";
 
-  // Filter boards to only ones not yet used
+  // choose an unused board
   const unusedBoards = boards.filter((_, i) => !completedBoards.includes(i));
-
   if (unusedBoards.length === 0) {
-    showMessage("🎉 You've completed all puzzles!");
-    // Reset if you want endless mode:
-    // completedBoards = [];
+    showMessage("🎉 You've completed all puzzles!", { sticky: true });
     return;
   }
-
-  // Randomly pick one of the unused boards
   const randomIndex = Math.floor(Math.random() * unusedBoards.length);
   const board = unusedBoards[randomIndex];
-
-  // Find actual index in full boards list
   const actualIndex = boards.indexOf(board);
   completedBoards.push(actualIndex);
-  // localStorage.setItem("completedBoards", JSON.stringify(completedBoards));
 
-  // Store theme + words
+  // data
   const grid = board.grid;
   validWords = board.words.map(w => w.toUpperCase());
   hiddenLock = board.scrollLock;
-  document.getElementById("theme").textContent = `Theme: ${board.theme}`;
 
+  // theme into the sidebar card
+  document.getElementById("theme").textContent = board.theme;
+
+  // render letters
   for (let i = 0; i < grid.length; i++) {
     const div = document.createElement("div");
     div.className = "letter";
@@ -58,17 +56,18 @@ function setupBoard() {
     gridEl.appendChild(div);
   }
 
-document.removeEventListener("mouseup", endSelect);
-document.addEventListener("mouseup", endSelect);
+  // ensure single mouseup listener
+  document.removeEventListener("mouseup", endSelect);
+  document.addEventListener("mouseup", endSelect);
 }
 
 function startSelect(e) {
   if (e.target.dataset.active !== "true") return;
-  e.preventDefault(); // stop native text selection start
+  e.preventDefault();
   document.body.classList.add('no-select');
 
   currentPath = [e.target];
-  e.target.style.background = "#ccc";
+  e.target.style.background = "#e8d8b7";
   selectedLetters = [e.target.textContent];
 }
 
@@ -80,7 +79,7 @@ function continueSelect(e) {
     e.target.dataset.active === "true"
   ) {
     currentPath.push(e.target);
-    e.target.style.background = "#ccc";
+    e.target.style.background = "#e8d8b7";
     selectedLetters.push(e.target.textContent);
   }
 }
@@ -100,7 +99,7 @@ function endSelect() {
   currentPath.forEach(el => el.style.background = "");
   selectedLetters = [];
   currentPath = [];
-  document.body.classList.remove('no-select'); // re-enable selection after drag
+  document.body.classList.remove('no-select');
 }
 
 function markUsedTiles(tiles) {
@@ -124,23 +123,25 @@ function giveKey(len) {
   img.className = "key";
   img.dataset.type = type;
   img.draggable = true;
-  setupDrag(img);
+
+  // reliable dragstart for FF/Edge
+  img.addEventListener("dragstart", (e) => {
+    e.dataTransfer.setData("text/plain", img.dataset.type || "key");
+    e.dataTransfer.effectAllowed = "move";
+    img.classList.add("dragging");
+  });
+  img.addEventListener("dragend", () => img.classList.remove("dragging"));
 
   const keyGrid = document.getElementById("keys");
   const empty = Array.from(keyGrid.querySelectorAll('.inv-slot')).find(s => !s.querySelector('.key'));
-  if (empty) {
-    empty.appendChild(img);
-  } else {
-    // fallback: append at end (if no slots left)
-    keyGrid.appendChild(img);
-  }
+  if (empty) empty.appendChild(img); else keyGrid.appendChild(img);
 }
 
 function setupLocks() {
   document.querySelectorAll(".lock").forEach(lock => {
     lock.innerHTML = `<img src="sprites/lock_${lock.dataset.type}.png" />`;
 
-    lock.addEventListener("dragover", e => e.preventDefault());
+    lock.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
     lock.addEventListener("drop", e => {
       e.preventDefault();
       const draggingKey = document.querySelector(".dragging");
@@ -161,7 +162,7 @@ function setupLocks() {
           scroll.style.left = "0";
           scroll.style.width = "100%";
           lock.appendChild(scroll);
-          setTimeout(() => resetGame(), 2000);
+          setTimeout(() => resetGame(), 1500);
         } else {
           lock.classList.add("failed");
           showMessage("❌ Wrong lock.");
@@ -184,6 +185,7 @@ function resetGame() {
       lock.innerHTML = `<img src="sprites/lock_${lock.dataset.type}.png" />`;
     });
 
+    // clear inventory
     document.getElementById("keys").innerHTML = "";
     setupLocks();
     setupBoard();
@@ -192,12 +194,11 @@ function resetGame() {
 }
 
 function setupDragAndDrop() {
-  const combiner = document.getElementById("combiner");
   const trash = document.getElementById("trash");
   const keyArea = document.getElementById("keys");
   const { a:slotA, b:slotB } = getCombinerSlots();
 
-  // Allow drag over everywhere we drop
+  // Allow drag over on targets
   [slotA, slotB, trash, keyArea, ...document.querySelectorAll(".lock")].forEach(area => {
     area.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
   });
@@ -208,13 +209,11 @@ function setupDragAndDrop() {
       e.preventDefault();
       const dragging = document.querySelector(".dragging");
       if (!dragging) return;
-
-      // one key per slot
-      if (slot.querySelector('.key')) return;
+      if (slot.querySelector('.key')) return; // one key per slot
 
       slot.appendChild(dragging);
       slot.classList.add('has-key');
-      checkCombinerKeys(); // try to combine if both filled
+      checkCombinerKeys(); // combine if both filled
     });
   });
 
@@ -226,51 +225,42 @@ function setupDragAndDrop() {
     [slotA, slotB].forEach(s => s.classList.toggle('has-key', !!s.querySelector('.key')));
   });
 
-  // Return to inventory (we’ll target a slot, see section 3)
-  keyArea.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
+  // Return to inventory: drop anywhere in #keys -> into first empty slot
   keyArea.addEventListener("drop", e => {
     e.preventDefault();
     const dragging = document.querySelector(".dragging");
     if (!dragging) return;
 
-    // find the closest empty inv slot
     const empty = Array.from(keyArea.querySelectorAll('.inv-slot')).find(s => !s.querySelector('.key'));
-    if (empty) empty.appendChild(dragging);
+    if (empty) empty.appendChild(dragging); else keyArea.appendChild(dragging);
+
     [slotA, slotB].forEach(s => s.classList.toggle('has-key', !!s.querySelector('.key')));
   });
 }
 
-function setupDrag(el) {
-  el.addEventListener("dragstart", () => el.classList.add("dragging"));
-  el.addEventListener("dragend", () => el.classList.remove("dragging"));
-}
-
 function checkCombinerKeys() {
-  const combiner = document.getElementById("combiner");
-  const keys = combiner.querySelectorAll(".key");
+  const { a:slotA, b:slotB } = getCombinerSlots();
+  const k1 = slotA.querySelector('.key');
+  const k2 = slotB.querySelector('.key');
+  if (!k1 || !k2) return;
 
-  if (keys.length >= 2) {
-    const [k1, k2] = keys;
-    const t1 = k1.dataset.type;
-    const t2 = k2.dataset.type;
+  const t1 = k1.dataset.type;
+  const t2 = k2.dataset.type;
+  if (t1 !== t2) return;
 
-    if (t1 === t2) {
-      let upgraded = null;
-      if (t1 === "wood") upgraded = "stone";
-      else if (t1 === "stone") upgraded = "gold";
+  let upgraded = null;
+  if (t1 === "wood") upgraded = "stone";
+  else if (t1 === "stone") upgraded = "gold";
+  if (!upgraded) return;
 
-      if (upgraded) {
-        k1.remove();
-        k2.remove();
-        giveKey(upgraded === "stone" ? 4 : 5);
-        showMessage(`🔁 Combined into a ${upgraded} key!`);
-      }
-    }
-  }
-}
+  // consume inputs
+  k1.remove(); k2.remove();
+  slotA.classList.remove('has-key');
+  slotB.classList.remove('has-key');
 
-function showMessage(msg) {
-  document.getElementById("message").textContent = msg;
+  // output to inventory
+  giveKey(upgraded === "stone" ? 4 : 5);
+  showMessage(`🔁 Combined into a ${upgraded} key!`);
 }
 
 function getCombinerSlots(){
@@ -281,3 +271,17 @@ function getCombinerSlots(){
   };
 }
 
+/* Popup-based messaging (replaces bottom text) */
+function showMessage(msg, opts = {}) {
+  const popup = document.getElementById('popup');
+  const txt = document.getElementById('popup-text');
+  if (!popup || !txt) return;
+
+  txt.textContent = msg;
+  popup.classList.remove('hidden');
+
+  clearTimeout(window._popupTimer);
+  if (!opts.sticky) {
+    window._popupTimer = setTimeout(() => popup.classList.add('hidden'), 1600);
+  }
+}
