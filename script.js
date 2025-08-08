@@ -1,87 +1,59 @@
-let dictionary = new Set();
+let boards = [];
+let validWords = [];
+let hiddenLock = '';
 let currentPath = [];
 let selectedLetters = [];
-let keys = [];
-let hiddenLock = '';
-const lockTypes = ['wood', 'stone', 'gold'];
 
 document.addEventListener("DOMContentLoaded", async () => {
-  await loadWords();
-  setupBoard();
+  await loadBoards();
   setupLocks();
+  setupBoard();
   setupDragAndDrop();
 });
 
-async function loadWords() {
-  const res = await fetch("words.txt");
-  const text = await res.text();
-  text.split("\n").forEach(w => {
-    if (w.length >= 3) dictionary.add(w.trim().toUpperCase());
-  });
+async function loadBoards() {
+  const res = await fetch("boards.json");
+  boards = await res.json();
 }
 
 function setupBoard() {
-  const grid = document.getElementById("letter-grid");
-  grid.innerHTML = "";
-  const boardSize = 5;
-  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const gridEl = document.getElementById("letter-grid");
+  gridEl.innerHTML = "";
 
-  // Create 5x5 empty board
-  let board = Array.from({ length: boardSize * boardSize }, () => "");
+  const board = boards[Math.floor(Math.random() * boards.length)];
+  const grid = board.grid;
+  validWords = board.words.map(w => w.toUpperCase());
+  hiddenLock = board.scrollLock;
+  document.getElementById("theme").textContent = `Theme: ${board.theme}`;
 
-  // Choose a random word from the dictionary (length 3–6)
-  const possibleWords = Array.from(dictionary).filter(w => w.length >= 3 && w.length <= 6);
-  const word = possibleWords[Math.floor(Math.random() * possibleWords.length)];
-
-  // Pick random start location and direction (horizontal or vertical)
-  const dir = Math.random() < 0.5 ? "horizontal" : "vertical";
-  const maxStart = boardSize - word.length;
-  let placed = false;
-
-  for (let attempts = 0; attempts < 100 && !placed; attempts++) {
-    let startRow = Math.floor(Math.random() * boardSize);
-    let startCol = Math.floor(Math.random() * boardSize);
-    if ((dir === "horizontal" && startCol <= maxStart) ||
-        (dir === "vertical" && startRow <= maxStart)) {
-      placed = true;
-      for (let i = 0; i < word.length; i++) {
-        const r = startRow + (dir === "vertical" ? i : 0);
-        const c = startCol + (dir === "horizontal" ? i : 0);
-        const index = r * boardSize + c;
-        board[index] = word[i];
-      }
-    }
-  }
-
-  // Fill remaining tiles with random letters
-  for (let i = 0; i < board.length; i++) {
-    if (board[i] === "") {
-      board[i] = getRandomLetter();
-    }
-  }
-
-  // Render board
-  for (let i = 0; i < board.length; i++) {
+  for (let i = 0; i < grid.length; i++) {
     const div = document.createElement("div");
     div.className = "letter";
-    div.textContent = board[i];
+    div.textContent = grid[i];
     div.dataset.index = i;
+    div.dataset.active = "true";
     div.addEventListener("mousedown", startSelect);
     div.addEventListener("mouseenter", continueSelect);
-    grid.appendChild(div);
+    gridEl.appendChild(div);
   }
 
   document.addEventListener("mouseup", endSelect);
 }
 
 function startSelect(e) {
+  if (e.target.dataset.active !== "true") return;
   currentPath = [e.target];
   e.target.style.background = "#ccc";
   selectedLetters = [e.target.textContent];
 }
 
 function continueSelect(e) {
-  if (currentPath.length > 0 && !currentPath.includes(e.target) && e.buttons) {
+  if (
+    e.buttons &&
+    currentPath.length > 0 &&
+    !currentPath.includes(e.target) &&
+    e.target.dataset.active === "true"
+  ) {
     currentPath.push(e.target);
     e.target.style.background = "#ccc";
     selectedLetters.push(e.target.textContent);
@@ -89,18 +61,34 @@ function continueSelect(e) {
 }
 
 function endSelect() {
-  if (selectedLetters.length >= 3) {
-    const word = selectedLetters.join("");
-    if (dictionary.has(word)) {
-      giveKey(word.length);
-      removeWordTiles(currentPath.map(el => parseInt(el.dataset.index)));
-      showMessage(`Found word: ${word}`);
-    }
+  const word = selectedLetters.join("");
+
+  if (selectedLetters.length >= 3 && validWords.includes(word)) {
+    giveKey(word.length);
+    markUsedTiles(currentPath);
+    showMessage(`Found word: ${word}`);
+  } else if (selectedLetters.length >= 3) {
+    invalidWordFeedback(currentPath);
+    showMessage(`"${word}" is not a valid word.`);
   }
 
   currentPath.forEach(el => el.style.background = "");
   selectedLetters = [];
   currentPath = [];
+}
+
+function markUsedTiles(tiles) {
+  tiles.forEach(el => {
+    el.dataset.active = "false";
+    el.classList.add("used");
+  });
+}
+
+function invalidWordFeedback(tiles) {
+  tiles.forEach(el => {
+    el.classList.add("invalid");
+    setTimeout(() => el.classList.remove("invalid"), 400);
+  });
 }
 
 function giveKey(len) {
@@ -115,8 +103,6 @@ function giveKey(len) {
 }
 
 function setupLocks() {
-  hiddenLock = lockTypes[Math.floor(Math.random() * 3)];
-
   document.querySelectorAll(".lock").forEach(lock => {
     lock.innerHTML = `<img src="sprites/lock_${lock.dataset.type}.png" />`;
 
@@ -128,14 +114,10 @@ function setupLocks() {
       const lockType = lock.dataset.type;
 
       lock.classList.add("jiggle");
-
-      setTimeout(() => {
-        lock.classList.remove("jiggle");
-      }, 500);
+      setTimeout(() => lock.classList.remove("jiggle"), 500);
 
       if (keyType === lockType) {
         draggingKey.remove();
-
         if (lockType === hiddenLock) {
           showMessage("🔓 You found the scroll!");
           const scroll = document.createElement("img");
@@ -195,10 +177,13 @@ function setupDragAndDrop() {
   keyArea.addEventListener("drop", e => {
     e.preventDefault();
     const dragging = document.querySelector(".dragging");
-    if (dragging) {
-      keyArea.appendChild(dragging);
-    }
+    if (dragging) keyArea.appendChild(dragging);
   });
+}
+
+function setupDrag(el) {
+  el.addEventListener("dragstart", () => el.classList.add("dragging"));
+  el.addEventListener("dragend", () => el.classList.remove("dragging"));
 }
 
 function checkCombinerKeys() {
@@ -225,52 +210,6 @@ function checkCombinerKeys() {
   }
 }
 
-function setupDrag(el) {
-  el.addEventListener("dragstart", () => {
-    el.classList.add("dragging");
-  });
-  el.addEventListener("dragend", () => {
-    el.classList.remove("dragging");
-  });
-}
-
-
 function showMessage(msg) {
   document.getElementById("message").textContent = msg;
-}
-function removeWordTiles(indices) {
-  const grid = document.getElementById("letter-grid");
-  const tiles = Array.from(grid.children);
-  const columns = 5;
-
-  // Clear letters from selected tiles
-  indices.forEach(i => {
-    tiles[i].textContent = "";
-  });
-
-  // Apply gravity
-  for (let col = 0; col < columns; col++) {
-    let columnTiles = [];
-
-    for (let row = 4; row >= 0; row--) {
-      const idx = row * columns + col;
-      const letter = tiles[idx].textContent;
-      if (letter !== "") columnTiles.push(letter);
-    }
-
-    // Fill column from bottom up
-    for (let row = 4; row >= 0; row--) {
-      const idx = row * columns + col;
-      if (columnTiles.length > 0) {
-        tiles[idx].textContent = columnTiles.shift();
-      } else {
-        tiles[idx].textContent = getRandomLetter();
-      }
-    }
-  }
-}
-
-function getRandomLetter() {
-  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  return letters[Math.floor(Math.random() * letters.length)];
 }
