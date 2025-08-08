@@ -6,6 +6,12 @@ body {
   padding: 20px;
 }
 
+#theme {
+  font-size: 18px;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
 #game {
   display: flex;
   flex-direction: column;
@@ -27,6 +33,24 @@ body {
   font-size: 24px;
   line-height: 60px;
   user-select: none;
+  transition: transform 0.1s;
+}
+
+.letter.used {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.letter.invalid {
+  animation: shake 0.4s;
+}
+
+@keyframes shake {
+  0% { transform: translateX(0px); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+  100% { transform: translateX(0px); }
 }
 
 #locks {
@@ -112,6 +136,6 @@ body {
 
 #message {
   font-size: 20px;
-  color: darkgreen;
   margin-top: 10px;
+  color: darkgreen;
 }
