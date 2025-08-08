@@ -77,11 +77,9 @@ body{
   border-radius:24px; border:3px solid rgba(0,0,0,.15);
   box-shadow: inset 0 10px 25px rgba(0,0,0,.12);
 }
-.board-theme{
-  font-weight:800; color:#5a3d1e; margin:0 0 10px;
-}
 
 /* Grid */
+#letter-grid,
 #letter-grid.grid{
   display:grid; grid-template-columns: repeat(5, 74px); gap:10px; justify-content:center;
 }
@@ -90,7 +88,7 @@ body{
   width:74px; height:74px; border-radius:16px;
   background:#f6e7c5; border:2px solid #7a5836; color:#2b1c12;
 
-  display:flex; align-items:center; justify-content:center;  /* CENTER */
+  display:flex; align-items:center; justify-content:center;  /* center text */
   font-size:28px; font-weight:900; letter-spacing:1px;
   text-shadow:0 1px 0 #fff7e0;
   box-shadow:0 2px 0 #b18a5b, 0 6px 14px rgba(0,0,0,.15);
@@ -121,13 +119,18 @@ body{
   border:2px solid rgba(0,0,0,.08);
 }
 
+/* Theme card */
+.theme-card{ display:flex; flex-direction:column; gap:6px; background:#fff8e8; border-color:#e3cfa6; }
+.theme-label{ font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#8a6a3e; }
+.theme-value{ font-size:18px; font-weight:900; color:#5a3d1e; }
+
 .legend ul{ list-style:none; padding:0; margin:0; display:grid; gap:8px; }
 .legend li{
   display:flex; align-items:center; gap:10px; font-weight:700; color:#4a3826;
 }
 .legend-key{ width:22px; height:22px; object-fit:contain; }
 
-/* Combiner + Trash stack (visual two slots w/ plus, JS unchanged) */
+/* Combiner + Trash stack (two visible slots) */
 .slot-stack{ display:flex; flex-direction:column; gap:12px; }
 .drop-zone{
   min-height:84px; border-radius:14px; padding:8px; display:flex; justify-content:center; align-items:center;
@@ -159,18 +162,30 @@ body{
   border:2px solid #d9c59b; border-radius:16px; box-shadow: var(--shadow);
   padding:12px 14px;
 }
-/* remove title spacing */
 .inventory h2{ display:none; }
 #inventory-ui{ }
 .inventory-section{ background:transparent; box-shadow:none; padding:0 }
-.key-row{
-  display:flex; align-items:center; gap:10px; min-height:70px; padding:6px;
-  overflow-x:auto; scrollbar-width:thin;
-}
-.key-row::-webkit-scrollbar{ height:8px }
-.key-row::-webkit-scrollbar-thumb{ background:#c7b28b; border-radius:10px }
 
-/* keep keys sized nicely in slots */
+/* Slot-based inventory that wraps cleanly */
+.key-grid{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
+  justify-content:flex-start;
+  padding:10px;
+}
+.inv-slot{
+  width:56px; height:56px;
+  border-radius:10px;
+  background:#fff7e2;
+  border:2px solid #d6ba84;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,.06);
+  display:flex; align-items:center; justify-content:center;
+  flex:0 0 56px; /* fixed slot width for tidy wrapping */
+}
+
+/* Keys */
 .key{
   width:48px; height:48px; max-width:48px; max-height:48px;
   border:1px solid #6f5a3e; border-radius:10px; background:#fff;
@@ -180,33 +195,26 @@ body{
 }
 .key:active{ transform:scale(.96) }
 
-.key-grid{
-  display:grid;
-  grid-template-columns: repeat(12, 56px);
-  gap:10px;
-  justify-content:flex-start;
-  padding:10px;
-  overflow-x:auto;
+/* Popup overlay */
+.popup{
+  position:fixed; inset:0; z-index:50;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.35);
 }
+.popup.hidden{ display:none; }
+.popup-card{
+  min-width:280px; max-width:80vw;
+  background:#fff8e8;
+  border:2px solid #e3cfa6; border-radius:16px;
+  box-shadow:0 12px 30px rgba(0,0,0,.25);
+  padding:16px 18px; text-align:center;
+}
+#popup-text{ font-weight:800; color:#5a3d1e; }
 
-/* Toast */
+/* Toast (unused) */
 .toast{ margin-top:8px; font-weight:700; color:#3b5d27; text-shadow:0 1px 0 #fff }
 
 /* Accessibility focus */
 .lock:focus-within img, .drop-zone:focus-within, .letter:focus{
   outline:3px solid #ffcc66; outline-offset:3px;
-}
-
-.inv-slot{
-  width:56px; height:56px;
-  border-radius:10px;
-  background:#fff7e2;
-  border:2px solid #d6ba84;
-  box-shadow: inset 0 2px 8px rgba(0,0,0,.06);
-  display:flex; align-items:center; justify-content:center;
-  flex:0 0 auto;
-}
-
-@media (max-width:900px){
-  .key-grid{ grid-template-columns: repeat(8, 56px); }
 }
