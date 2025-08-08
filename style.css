@@ -90,11 +90,20 @@ body {
 }
 
 #combiner, #trash {
-  width: 120px;
-  height: 60px;
-  line-height: 60px;
-  background: #ddd;
+  width: 140px;
+  height: 80px;
+  line-height: 80px;
+  background: #f0f0f0;
   border: 2px dashed #555;
+  text-align: center;
+}
+
+#combiner {
+  background: #e0f7ff;
+}
+
+#trash {
+  background: #ffe6e6;
 }
 
 #message {
