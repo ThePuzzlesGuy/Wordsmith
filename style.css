@@ -91,11 +91,15 @@ body {
 
 #combiner, #trash {
   width: 140px;
-  height: 80px;
-  line-height: 80px;
+  min-height: 80px;
+  padding: 5px;
   background: #f0f0f0;
   border: 2px dashed #555;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 5px;
 }
 
 #combiner {
