@@ -1,1 +1,95 @@
+body {
+  font-family: sans-serif;
+  text-align: center;
+  background: #f0e5d8;
+  margin: 0;
+  padding: 20px;
+}
 
+#game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+#letter-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 60px);
+  grid-gap: 8px;
+}
+
+.letter {
+  width: 60px;
+  height: 60px;
+  background: white;
+  border: 2px solid #333;
+  font-size: 24px;
+  line-height: 60px;
+  user-select: none;
+}
+
+#locks {
+  display: flex;
+  gap: 20px;
+}
+
+.lock {
+  width: 80px;
+  height: 80px;
+  position: relative;
+}
+
+.lock img {
+  width: 100%;
+  transition: transform 0.2s;
+}
+
+.lock.jiggle img {
+  animation: jiggle 0.5s;
+}
+
+@keyframes jiggle {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(-10deg); }
+  50% { transform: rotate(10deg); }
+  75% { transform: rotate(-5deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.lock.failed img {
+  filter: brightness(0.4);
+}
+
+#inventory {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+#keys {
+  display: flex;
+  gap: 10px;
+  min-height: 80px;
+}
+
+.key {
+  width: 50px;
+  height: 50px;
+  cursor: grab;
+}
+
+#combiner, #trash {
+  width: 120px;
+  height: 60px;
+  line-height: 60px;
+  background: #ddd;
+  border: 2px dashed #555;
+}
+
+#message {
+  font-size: 20px;
+  color: darkgreen;
+  margin-top: 10px;
+}
