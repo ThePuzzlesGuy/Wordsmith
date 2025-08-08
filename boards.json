@@ -10,6 +10,19 @@
     ],
     "words": ["GOLD", "STONE", "KEY", "LOCK", "WOOD", "SAW", "SCREW"],
     "scrollLock": "gold"
+  },
+    {
+    "theme": "Materials",
+    "grid": [
+      "I", "R", "O", "E", "S",
+      "K", "N", "N", "O", "T",
+      "Y", "E", "L", "E", "R",
+      "K", "O", "O", "C", "W",
+      "C", "W", "O", "D", "S"
+    ],
+    "words": ["Iron", "STONE", "KEY", "LOCK", "WOOD", "SAW", "SCREW"],
+    "scrollLock": "wood"
   }
 ]
+
 
