@@ -3,7 +3,6 @@ let validWords = [];
 let hiddenLock = '';
 let currentPath = [];
 let selectedLetters = [];
-let completedBoards = [];
 let completedBoards = JSON.parse(localStorage.getItem("completedBoards") || "[]");
 
 document.addEventListener("DOMContentLoaded", async () => {
