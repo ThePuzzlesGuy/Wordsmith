@@ -2,13 +2,14 @@
   {
     "theme": "Treasure & Tools",
     "grid": [
-      "G", "O", "L", "D", "S",
-      "T", "O", "N", "E", "K",
-      "E", "Y", "S", "A", "L",
-      "O", "C", "K", "W", "O",
-      "O", "D", "S", "C", "R"
+      "G", "O", "L", "E", "S",
+      "K", "D", "N", "O", "T",
+      "Y", "E", "L", "E", "R",
+      "K", "O", "O", "C", "W",
+      "C", "W", "O", "D", "S"
     ],
     "words": ["GOLD", "STONE", "KEY", "LOCK", "WOOD", "SAW", "SCREW"],
     "scrollLock": "gold"
   }
 ]
+
