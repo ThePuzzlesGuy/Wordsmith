@@ -3,6 +3,8 @@ let validWords = [];
 let hiddenLock = '';
 let currentPath = [];
 let selectedLetters = [];
+let completedBoards = [];
+let completedBoards = JSON.parse(localStorage.getItem("completedBoards") || "[]");
 
 document.addEventListener("DOMContentLoaded", async () => {
   await loadBoards();
@@ -20,7 +22,26 @@ function setupBoard() {
   const gridEl = document.getElementById("letter-grid");
   gridEl.innerHTML = "";
 
-  const board = boards[Math.floor(Math.random() * boards.length)];
+  // Filter boards to only ones not yet used
+  const unusedBoards = boards.filter((_, i) => !completedBoards.includes(i));
+
+  if (unusedBoards.length === 0) {
+    showMessage("🎉 You've completed all puzzles!");
+    // Reset if you want endless mode:
+    // completedBoards = [];
+    return;
+  }
+
+  // Randomly pick one of the unused boards
+  const randomIndex = Math.floor(Math.random() * unusedBoards.length);
+  const board = unusedBoards[randomIndex];
+
+  // Find actual index in full boards list
+  const actualIndex = boards.indexOf(board);
+  completedBoards.push(actualIndex);
+  localStorage.setItem("completedBoards", JSON.stringify(completedBoards));
+
+  // Store theme + words
   const grid = board.grid;
   validWords = board.words.map(w => w.toUpperCase());
   hiddenLock = board.scrollLock;
