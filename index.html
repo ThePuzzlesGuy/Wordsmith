@@ -7,78 +7,92 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
- <header class="topbar">
-  <div class="topbar-inner">
-    <h1 class="title">WORDSMITH</h1>
-    <div class="topbar-icons">
-      <button class="icon-btn" aria-label="Profile">👤</button>
-      <button class="icon-btn" aria-label="Settings">⚙️</button>
-    </div>
-  </div>
-</header>
-
-<main id="app">
-  <section class="play-area">
-    <!-- Locks row -->
-    <div class="locks-strip">
-      <div id="locks" class="locks">
-        <div class="lock" data-type="wood"><img src="sprites/lock_wood.png" alt=""></div>
-        <div class="lock" data-type="stone"><img src="sprites/lock_stone.png" alt=""></div>
-        <div class="lock" data-type="gold"><img src="sprites/lock_gold.png" alt=""></div>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <h1 class="title">WORDSMITH</h1>
+      <div class="topbar-icons">
+        <button class="icon-btn" aria-label="Profile">👤</button>
+        <button class="icon-btn" aria-label="Settings">⚙️</button>
       </div>
     </div>
+  </header>
 
-    <!-- Parchment board -->
-    <div class="board-wrap">
-      <div class="parchment">
-        <div id="theme" class="board-theme">Theme: —</div>
-        <div id="letter-grid" class="grid"></div>
+  <main id="app">
+    <section class="play-area">
+      <!-- Locks row -->
+      <div class="locks-strip">
+        <div id="locks" class="locks">
+          <div class="lock" data-type="wood"><img src="sprites/lock_wood.png" alt=""></div>
+          <div class="lock" data-type="stone"><img src="sprites/lock_stone.png" alt=""></div>
+          <div class="lock" data-type="gold"><img src="sprites/lock_gold.png" alt=""></div>
+        </div>
       </div>
-    </div>
-  </section>
 
-  <!-- Right sidebar: legend + combiner stack -->
-  <aside class="sidebar">
-    <div class="legend card">
-      <ul>
-        <li><img class="legend-key" src="sprites/key_wood.png" alt=""> 3 Letters</li>
-        <li><img class="legend-key" src="sprites/key_stone.png" alt=""> 4 Letters</li>
-        <li><img class="legend-key" src="sprites/key_gold.png" alt=""> 5+ Letters</li>
-      </ul>
-    </div>
+      <!-- Parchment board -->
+      <div class="board-wrap">
+        <div class="parchment">
+          <!-- theme removed from here; it lives in the sidebar card -->
+          <div id="letter-grid" class="grid"></div>
+        </div>
+      </div>
+    </section>
 
-    <div class="combine card">
-      <div class="slot-stack">
-<div id="combiner" class="drop-zone combiner-visual">
-  <div class="slot a" data-slot="a"></div>
-  <div class="plus">+</div>
-  <div class="slot b" data-slot="b"></div>
-</div>
-        <div id="trash" class="drop-zone trash-visual">
-          <span class="trash-icon">🗑️</span>
+    <!-- Right sidebar: theme card + legend + combiner stack -->
+    <aside class="sidebar">
+      <div id="theme-card" class="card theme-card">
+        <div class="theme-label">Theme</div>
+        <div id="theme" class="theme-value">—</div>
+      </div>
+
+      <div class="legend card">
+        <ul>
+          <li><img class="legend-key" src="sprites/key_wood.png" alt=""> 3 Letters</li>
+          <li><img class="legend-key" src="sprites/key_stone.png" alt=""> 4 Letters</li>
+          <li><img class="legend-key" src="sprites/key_gold.png" alt=""> 5+ Letters</li>
+        </ul>
+      </div>
+
+      <div class="combine card">
+        <div class="slot-stack">
+          <div id="combiner" class="drop-zone combiner-visual">
+            <div class="slot a" data-slot="a"></div>
+            <div class="plus">+</div>
+            <div class="slot b" data-slot="b"></div>
+          </div>
+          <div id="trash" class="drop-zone trash-visual">
+            <span class="trash-icon">🗑️</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Bottom inventory dock -->
+  <footer class="inventory-dock">
+    <div id="inventory" class="inventory">
+      <div id="inventory-ui">
+        <div class="inventory-section">
+          <div id="keys" class="key-grid">
+            <!-- Start with 12 slots; add more if you like -->
+            <div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div>
+            <div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div>
+            <div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div>
+          </div>
         </div>
       </div>
     </div>
-  </aside>
-</main>
+  </footer>
 
-<!-- Bottom inventory dock -->
-<footer class="inventory-dock">
-  <div id="inventory" class="inventory">
-    <div id="inventory-ui">
-      <div class="inventory-section">
-        <div id="keys" class="key-grid">
-          <!-- 12 slots to start; add/remove as you like -->
-          <div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div>
-          <div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div>
-          <div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div>
-        </div>
-      </div>
+  <!-- Popup overlay (replaces bottom message) -->
+  <div id="popup" class="popup hidden">
+    <div class="popup-card">
+      <div id="popup-text"></div>
     </div>
   </div>
-</footer>
 
-<div id="message" class="toast"></div>
-<script src="script.js"></script>
+  <!-- Old bottom message is unused now -->
+  <div id="message" class="toast" style="display:none;"></div>
+
+  <script src="script.js"></script>
 </body>
 </html>
