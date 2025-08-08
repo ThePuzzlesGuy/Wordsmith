@@ -49,12 +49,11 @@
 
     <div class="combine card">
       <div class="slot-stack">
-        <div id="combiner" class="drop-zone combiner-visual">
-          <!-- single drop zone (JS unchanged) but visually shows 2 slots + plus -->
-          <div class="fake-slot a"></div>
-          <div class="plus">+</div>
-          <div class="fake-slot b"></div>
-        </div>
+<div id="combiner" class="drop-zone combiner-visual">
+  <div class="slot a" data-slot="a"></div>
+  <div class="plus">+</div>
+  <div class="slot b" data-slot="b"></div>
+</div>
         <div id="trash" class="drop-zone trash-visual">
           <span class="trash-icon">🗑️</span>
         </div>
@@ -66,10 +65,14 @@
 <!-- Bottom inventory dock -->
 <footer class="inventory-dock">
   <div id="inventory" class="inventory">
-    <h2>Inventory</h2>
     <div id="inventory-ui">
       <div class="inventory-section">
-        <div id="keys" class="key-row"></div>
+        <div id="keys" class="key-grid">
+          <!-- 12 slots to start; add/remove as you like -->
+          <div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div>
+          <div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div>
+          <div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div>
+        </div>
       </div>
     </div>
   </div>
