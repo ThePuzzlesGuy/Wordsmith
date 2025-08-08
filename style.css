@@ -25,27 +25,34 @@ body {
   grid-gap: 8px;
 }
 
-/* Never select letters (and stop Safari/old Edge weirdness) */
+/* Prevent selecting/highlighting letters */
 #letter-grid, #letter-grid .letter {
   user-select: none;
   -webkit-user-select: none;
   -ms-user-select: none;
   -moz-user-select: none;
-  -webkit-tap-highlight-color: transparent; /* mobile flash */
-  touch-action: none; /* stops touch scrolling while dragging */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
 }
 
-/* While dragging, disable selection app-wide just in case */
+/* While dragging, disable selection globally */
 .no-select {
   user-select: none !important;
   -webkit-user-select: none !important;
 }
 
-/* Also prevent dragging lock/key images as “ghost images” */
-img {
+/* Prevent dragging ghost images for board & lock art */
+#letter-grid img,
+#locks img {
   -webkit-user-drag: none;
   user-drag: none;
-  pointer-events: auto; /* still clickable/draggable via our code */
+}
+
+/* Allow keys to be draggable */
+.key {
+  -webkit-user-drag: element;
+  user-drag: element;
+  cursor: grab;
 }
 
 .letter {
@@ -55,7 +62,6 @@ img {
   border: 2px solid #333;
   font-size: 24px;
   line-height: 60px;
-  user-select: none;
   transition: transform 0.1s;
 }
 
@@ -156,15 +162,6 @@ img {
   justify-content: center;
 }
 
-.key {
-  width: 50px;
-  height: 50px;
-  cursor: grab;
-  border: 1px solid #444;
-  border-radius: 5px;
-  background: white;
-}
-
 .key-box {
   display: flex;
   flex-wrap: wrap;
@@ -194,11 +191,11 @@ img {
   font-size: 24px;
   opacity: 0.5;
 }
+
 #combiner, #trash {
   width: 140px;
   min-height: 80px;
   padding: 5px;
-  background: #f0f0f0;
   border: 2px dashed #555;
   display: flex;
   align-items: center;
