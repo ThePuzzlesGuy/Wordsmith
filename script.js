@@ -78,35 +78,45 @@ function giveKey(len) {
 
 function setupLocks() {
   hiddenLock = lockTypes[Math.floor(Math.random() * 3)];
+
   document.querySelectorAll(".lock").forEach(lock => {
-    lock.addEventListener("click", () => tryUnlock(lock));
+    lock.innerHTML = `<img src="sprites/lock_${lock.dataset.type}.png" />`;
+
+    lock.addEventListener("dragover", e => e.preventDefault());
+    lock.addEventListener("drop", e => {
+      e.preventDefault();
+      const draggingKey = document.querySelector(".dragging");
+      const keyType = draggingKey?.dataset.type;
+      const lockType = lock.dataset.type;
+
+      lock.classList.add("jiggle");
+
+      setTimeout(() => {
+        lock.classList.remove("jiggle");
+      }, 500);
+
+      if (keyType === lockType) {
+        draggingKey.remove();
+
+        if (lockType === hiddenLock) {
+          showMessage("🔓 You found the scroll!");
+          const scroll = document.createElement("img");
+          scroll.src = "sprites/scroll.png";
+          scroll.style.position = "absolute";
+          scroll.style.top = "0";
+          scroll.style.left = "0";
+          scroll.style.width = "100%";
+          lock.appendChild(scroll);
+          setTimeout(() => resetGame(), 2000);
+        } else {
+          lock.classList.add("failed");
+          showMessage("❌ Wrong lock.");
+        }
+      } else {
+        showMessage("❌ That key doesn't fit this lock.");
+      }
+    });
   });
-}
-
-function tryUnlock(lock) {
-  const type = lock.dataset.type;
-  lock.classList.add("jiggle");
-
-  setTimeout(() => {
-    lock.classList.remove("jiggle");
-  }, 500);
-
-  if (type === hiddenLock) {
-    showMessage("🔓 You found the scroll!");
-    const img = document.createElement("img");
-    img.src = "sprites/scroll.png";
-    img.style.position = "absolute";
-    img.style.top = "0";
-    img.style.left = "0";
-    img.style.width = "100%";
-    lock.appendChild(img);
-    setTimeout(() => {
-      resetGame();
-    }, 2000);
-  } else {
-    lock.classList.add("failed");
-    showMessage("❌ Wrong lock.");
-  }
 }
 
 function resetGame() {
@@ -161,6 +171,7 @@ function setupDrag(el) {
     el.classList.remove("dragging");
   });
 }
+
 
 function showMessage(msg) {
   document.getElementById("message").textContent = msg;
