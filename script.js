@@ -124,8 +124,16 @@ function giveKey(len) {
   img.className = "key";
   img.dataset.type = type;
   img.draggable = true;
-  document.getElementById("keys").appendChild(img);
   setupDrag(img);
+
+  const keyGrid = document.getElementById("keys");
+  const empty = Array.from(keyGrid.querySelectorAll('.inv-slot')).find(s => !s.querySelector('.key'));
+  if (empty) {
+    empty.appendChild(img);
+  } else {
+    // fallback: append at end (if no slots left)
+    keyGrid.appendChild(img);
+  }
 }
 
 function setupLocks() {
@@ -187,30 +195,48 @@ function setupDragAndDrop() {
   const combiner = document.getElementById("combiner");
   const trash = document.getElementById("trash");
   const keyArea = document.getElementById("keys");
+  const { a:slotA, b:slotB } = getCombinerSlots();
 
-  [combiner, trash, keyArea].forEach(area => {
-    area.addEventListener("dragover", e => e.preventDefault());
+  // Allow drag over everywhere we drop
+  [slotA, slotB, trash, keyArea, ...document.querySelectorAll(".lock")].forEach(area => {
+    area.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
   });
 
-  combiner.addEventListener("drop", e => {
-    e.preventDefault();
-    const dragging = document.querySelector(".dragging");
-    if (!dragging) return;
+  // Drop into individual combiner slots
+  [slotA, slotB].forEach(slot => {
+    slot.addEventListener("drop", e => {
+      e.preventDefault();
+      const dragging = document.querySelector(".dragging");
+      if (!dragging) return;
 
-    combiner.appendChild(dragging);
-    checkCombinerKeys();
+      // one key per slot
+      if (slot.querySelector('.key')) return;
+
+      slot.appendChild(dragging);
+      slot.classList.add('has-key');
+      checkCombinerKeys(); // try to combine if both filled
+    });
   });
 
+  // Trash
   trash.addEventListener("drop", e => {
     e.preventDefault();
     document.querySelectorAll(".dragging").forEach(k => k.remove());
     showMessage("🗑️ Key deleted");
+    [slotA, slotB].forEach(s => s.classList.toggle('has-key', !!s.querySelector('.key')));
   });
 
+  // Return to inventory (we’ll target a slot, see section 3)
+  keyArea.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
   keyArea.addEventListener("drop", e => {
     e.preventDefault();
     const dragging = document.querySelector(".dragging");
-    if (dragging) keyArea.appendChild(dragging);
+    if (!dragging) return;
+
+    // find the closest empty inv slot
+    const empty = Array.from(keyArea.querySelectorAll('.inv-slot')).find(s => !s.querySelector('.key'));
+    if (empty) empty.appendChild(dragging);
+    [slotA, slotB].forEach(s => s.classList.toggle('has-key', !!s.querySelector('.key')));
   });
 }
 
@@ -246,3 +272,12 @@ function checkCombinerKeys() {
 function showMessage(msg) {
   document.getElementById("message").textContent = msg;
 }
+
+function getCombinerSlots(){
+  const c = document.getElementById('combiner');
+  return {
+    a: c.querySelector('.slot.a'),
+    b: c.querySelector('.slot.b')
+  };
+}
+
