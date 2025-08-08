@@ -64,6 +64,9 @@ document.addEventListener("mouseup", endSelect);
 
 function startSelect(e) {
   if (e.target.dataset.active !== "true") return;
+  e.preventDefault(); // stop native text selection start
+  document.body.classList.add('no-select');
+
   currentPath = [e.target];
   e.target.style.background = "#ccc";
   selectedLetters = [e.target.textContent];
@@ -97,6 +100,7 @@ function endSelect() {
   currentPath.forEach(el => el.style.background = "");
   selectedLetters = [];
   currentPath = [];
+  document.body.classList.remove('no-select'); // re-enable selection after drag
 }
 
 function markUsedTiles(tiles) {
