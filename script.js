@@ -108,22 +108,26 @@ function buildDynamicLocks(words) {
   sizeLocksRow();
 }
 
-/* Fit locks to one row: if count > 7, shrink to fit container width */
+/* Fit locks to the same width that 7 full-size locks would use */
 function sizeLocksRow() {
   const wrap = document.getElementById('locks');
   if (!wrap) return;
 
   const count = wrap.children.length;
-  const gap = parseInt(getComputedStyle(wrap).columnGap || getComputedStyle(wrap).gap || 18, 10) || 18;
-  const wrapWidth = wrap.clientWidth;
+  const styles = getComputedStyle(wrap);
+  const gap = parseInt(styles.gap || 18, 10) || 18;
 
-  const BASE = 86;  // px
-  const MIN  = 56;  // don't get too tiny
+  const BASE = 86;        // normal lock size (px)
+  const MIN  = 48;        // don't get tiny
+
+  // Width that 7 full-size locks would occupy (our target visual width)
+  const targetWidth = 7 * BASE + (7 - 1) * gap;
 
   let size = BASE;
   if (count > 7) {
-    const available = wrapWidth - gap * (count - 1);
-    size = Math.max(MIN, Math.floor(available / count));
+    // Shrink so c * size + (c-1) * gap == targetWidth (or as close as possible)
+    size = Math.floor((targetWidth - (count - 1) * gap) / count);
+    size = Math.max(MIN, Math.min(BASE, size));
   }
 
   wrap.style.setProperty('--lock-size', `${size}px`);
