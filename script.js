@@ -10,10 +10,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupBoard();
   setupDragAndDrop();
 
-  // Dismiss simple message popup on click
-  document.getElementById('popup')?.addEventListener('click', () => hidePopup());
+  // Simple popup click hides
+  document.getElementById('popup')?.addEventListener('click', (e) => {
+    if (e.target.id === 'popup') hidePopup();
+  });
 
-  // Refit locks on resize
   window.addEventListener('resize', sizeLocksRow);
 });
 
@@ -60,7 +61,7 @@ function setupBoard() {
     gridEl.appendChild(div);
   }
 
-  // build locks from the distribution implied by word lengths
+  // build locks from word-length distribution
   buildDynamicLocks(board.words);
 
   // ensure single mouseup listener
@@ -104,11 +105,10 @@ function buildDynamicLocks(words) {
     locksWrap.appendChild(lock);
   });
 
-  // Fit the row to one line (shrink if >7)
-  sizeLocksRow();
+  sizeLocksRow(); // fit single row
 }
 
-/* Fit locks to the same width that 7 full-size locks would use */
+/* Fit locks to the same width 7 full-size locks would use */
 function sizeLocksRow() {
   const wrap = document.getElementById('locks');
   if (!wrap) return;
@@ -120,12 +120,10 @@ function sizeLocksRow() {
   const BASE = 86;        // normal lock size (px)
   const MIN  = 48;        // don't get tiny
 
-  // Width that 7 full-size locks would occupy (our target visual width)
   const targetWidth = 7 * BASE + (7 - 1) * gap;
 
   let size = BASE;
   if (count > 7) {
-    // Shrink so c * size + (c-1) * gap == targetWidth (or as close as possible)
     size = Math.floor((targetWidth - (count - 1) * gap) / count);
     size = Math.max(MIN, Math.min(BASE, size));
   }
@@ -144,51 +142,118 @@ async function onLockDrop(e, lock) {
 
   if (!draggingKey) return;
 
-  // strict matching (no overkill)
+  // LOCK PICK: can open any lock with gamble flow
+  if (keyType === 'pick') {
+    await handleLockPickDrop(lock, draggingKey);
+    return;
+  }
+
+  // strict matching for normal keys (gold only opens gold now)
   if (keyType !== lockType) return;
 
-  // if carried, run durability mini-game first
+  // carried keys (wood/stone/gold) still have durability rolls, NOT for pick
   if (draggingKey.dataset.carried === "true") {
     const ok = await runDurabilityCheck(keyType);
     if (!ok) { draggingKey.remove(); return; } // shattered
   }
 
-  // consume the key
   draggingKey.remove();
 
   const isScrollHere = Number(lock.dataset.id) === Number(hiddenLockId);
   if (isScrollHere) {
-    showMessage("You've found the scroll!");
-    const scroll = document.createElement("img");
-    scroll.src = "sprites/scroll.png";
-    scroll.style.position = "absolute";
-    scroll.style.top = "0";
-    scroll.style.left = "0";
-    scroll.style.width = "100%";
-    lock.appendChild(scroll);
-    setTimeout(() => resetGame(), 1500);
+    revealScroll(lock);
   } else {
     lock.classList.add("failed");
     showMessage("Nothing behind this lock...");
-
-    // gold bonus: darken one extra wrong lock
-    if (keyType === 'gold') {
-      darkenAnotherWrongLock(Number(lock.dataset.id));
-    }
   }
 }
 
-function darkenAnotherWrongLock(excludeId) {
-  const locksWrap = document.getElementById('locks');
-  const candidates = Array.from(locksWrap.querySelectorAll('.lock'))
+/* ===== Lock Pick flow ===== */
+async function handleLockPickDrop(lock, keyEl){
+  // Ask if they want to attempt multiple locks
+  const wantMulti = await confirmChoice(
+    "Use the lock pick on multiple locks?",
+    "Yes, take the risk",
+    "No, just this lock"
+  );
+
+  if (!wantMulti) {
+    // open chosen only
+    keyEl.remove();
+    openLockSimple(lock, /*announce*/true);
+    return;
+  }
+
+  // First gamble: 50/50 to prime for 2 uses
+  const ok50 = await runGamble(0.5);
+  if (!ok50) {
+    keyEl.remove();
+    showMessage("Lock picking unsuccessful");
+    return;
+  }
+
+  // Offer second gamble for 3 uses (25% success)
+  const tryThree = await confirmChoice(
+    "Key is good for 2 uses. Try for 3 uses?",
+    "Yes (25% risk)",
+    "No, take 2"
+  );
+
+  if (!tryThree) {
+    keyEl.remove();
+    // chosen + 1 random wrong
+    openLockSimple(lock, /*announce*/true);
+    openRandomWrong(1, [Number(lock.dataset.id)]);
+    return;
+  }
+
+  const ok25 = await runGamble(0.25);
+  if (!ok25) {
+    keyEl.remove();
+    showMessage("Lock picking unsuccessful");
+    return;
+  }
+
+  // Success: chosen + 2 wrong
+  keyEl.remove();
+  openLockSimple(lock, /*announce*/true);
+  openRandomWrong(2, [Number(lock.dataset.id)]);
+}
+
+/* Open exactly one lock, announcing result (scroll message or single "Nothing...") */
+function openLockSimple(lock, announce){
+  const isScrollHere = Number(lock.dataset.id) === Number(hiddenLockId);
+  if (isScrollHere) {
+    revealScroll(lock);
+  } else {
+    lock.classList.add("failed");
+    if (announce) showMessage("Nothing behind this lock...");
+  }
+}
+
+/* Open N additional wrong locks (no messages), excluding ids in "exclude" */
+function openRandomWrong(n, excludeIds = []) {
+  const wrap = document.getElementById('locks');
+  const candidates = Array.from(wrap.querySelectorAll('.lock'))
     .filter(l =>
       !l.classList.contains('failed') &&
       Number(l.dataset.id) !== hiddenLockId &&
-      Number(l.dataset.id) !== Number(excludeId)
+      !excludeIds.includes(Number(l.dataset.id))
     );
-  if (candidates.length === 0) return;
-  const pick = candidates[Math.floor(Math.random() * candidates.length)];
-  pick.classList.add('failed');
+  shuffle(candidates);
+  candidates.slice(0, n).forEach(l => l.classList.add('failed'));
+}
+
+function revealScroll(lock){
+  showMessage("You've found the scroll!");
+  const scroll = document.createElement("img");
+  scroll.src = "sprites/scroll.png";
+  scroll.style.position = "absolute";
+  scroll.style.top = "0";
+  scroll.style.left = "0";
+  scroll.style.width = "100%";
+  lock.appendChild(scroll);
+  setTimeout(() => resetGame(), 1500);
 }
 
 /* ========== LETTER DRAG-SELECT ========== */
@@ -218,12 +283,11 @@ function continueSelect(e) {
 function endSelect() {
   const word = selectedLetters.join("");
 
-  // valid word → grant key (no popup)
   if (selectedLetters.length >= 3 && validWords.includes(word)) {
     giveKey(word.length);
     markUsedTiles(currentPath);
   } else if (selectedLetters.length >= 3) {
-    invalidWordFeedback(currentPath); // visual shake only
+    invalidWordFeedback(currentPath);
   }
 
   currentPath.forEach(el => el.style.background = "");
@@ -249,15 +313,18 @@ function invalidWordFeedback(tiles) {
 /* ========== KEYS, INVENTORY, COMBINER ========== */
 function giveKey(len) {
   const type = len === 3 ? 'wood' : len === 4 ? 'stone' : 'gold';
+  spawnKey(type);
+}
+
+function spawnKey(type){
   const inv = document.getElementById("inventory");
   const keyGrid = document.getElementById("keys");
 
-  // capacity check (5 slots)
   const emptySlot = Array.from(keyGrid.querySelectorAll('.inv-slot')).find(s => !s.querySelector('.key'));
   if (!emptySlot) {
     inv.classList.add('full');
     setTimeout(() => inv.classList.remove('full'), 320);
-    return; // drop the reward if full
+    return;
   }
 
   const img = document.createElement("img");
@@ -279,11 +346,9 @@ function giveKey(len) {
 function resetGame() {
   const grid = document.getElementById("letter-grid");
   grid.style.opacity = 0;
-
   setTimeout(() => {
     grid.style.opacity = 1;
-    // keep inventory (carryover)
-    setupBoard();
+    setupBoard(); // keep inventory (carryover)
   }, 400);
 }
 
@@ -337,22 +402,28 @@ function checkCombinerKeys() {
   const t2 = k2.dataset.type;
   if (t1 !== t2) return;
 
-  let upgraded = null;
-  if (t1 === "wood") upgraded = "stone";
-  else if (t1 === "stone") upgraded = "gold";
-  if (!upgraded) return;
+  // combine mapping: wood->stone, stone->gold, gold->pick
+  let result = null;
+  if (t1 === "wood") result = "stone";
+  else if (t1 === "stone") result = "gold";
+  else if (t1 === "gold") result = "pick";
+
+  if (!result) return;
 
   // consume inputs
   k1.remove(); k2.remove();
   slotA.classList.remove('has-key');
   slotB.classList.remove('has-key');
 
-  // create result key (fresh, not carried)
-  giveKey(upgraded === "stone" ? 4 : 5);
-
-  // success popup (your phrasing)
-  const label = upgraded.charAt(0).toUpperCase() + upgraded.slice(1);
-  showMessage(`You've successfully crafted a ${label} key!`);
+  // spawn result
+  if (result === 'pick') {
+    spawnKey('pick');
+    showMessage(`You've successfully crafted a Lock Pick!`);
+  } else {
+    spawnKey(result);
+    const label = result.charAt(0).toUpperCase() + result.slice(1);
+    showMessage(`You've successfully crafted a ${label} key!`);
+  }
 }
 
 function getCombinerSlots(){
@@ -360,73 +431,109 @@ function getCombinerSlots(){
   return { a: c.querySelector('.slot.a'), b: c.querySelector('.slot.b') };
 }
 
-/* ========== DURABILITY MINI-GAME ========== */
+/* ========== DURABILITY & GAMBLE ========== */
 function runDurabilityCheck(keyType){
   return new Promise(resolve => {
+    // No durability for lock picks
+    if (keyType === 'pick') { resolve(true); return; }
+
     const survival = keyType === 'wood' ? 0.25 : keyType === 'stone' ? 0.5 : 0.75; // survive odds
-    const breakOdds = 1 - survival;
-
-    const dur = document.getElementById('durability');
-    const cursor = document.getElementById('dur-cursor');
-    const caption = document.getElementById('dur-caption');
-    const red = dur.querySelector('.dur-red');
-    const green = dur.querySelector('.dur-green');
-
-    // set bar proportions
-    const totalWidth = 320;
-    red.style.width = `${Math.round(breakOdds * totalWidth)}px`;
-    green.style.width = `${Math.round(survival * totalWidth)}px`;
-
-    // reset cursor & text
-    cursor.style.left = `0px`;
-    caption.textContent = "Checking durability…";
-    dur.classList.remove('hidden');
-
-    // simple left-right wiggle for ~1.2s
-    let dir = 1, pos = 0;
-    const speed = 6; // px per tick
-    const interval = setInterval(() => {
-      pos += dir * speed;
-      if (pos < 0) { pos = 0; dir = 1; }
-      if (pos > totalWidth) { pos = totalWidth; dir = -1; }
-      cursor.style.left = `${pos}px`;
-    }, 16);
-
-    // pick result
-    const succeed = Math.random() < survival;
-
-    setTimeout(() => {
-      clearInterval(interval);
-      // land cursor inside the success/failed zone
-      const min = succeed ? Math.round(breakOdds * totalWidth) + 6 : 6;
-      const max = succeed ? totalWidth - 6 : Math.round(breakOdds * totalWidth) - 6;
-      const stop = Math.max(6, Math.min(totalWidth-6, Math.floor(min + Math.random()*(max-min))));
-      cursor.style.left = `${stop}px`;
-
-      caption.textContent = succeed ? "It holds!" : "It shatters!";
-      setTimeout(() => { dur.classList.add('hidden'); resolve(succeed); }, 650);
-    }, 1200);
+    showGambleBar(survival, resolve);
   });
 }
 
-/* ========== UTIL & POPUPS ========== */
+function runGamble(successChance){
+  return new Promise(resolve => {
+    showGambleBar(successChance, resolve);
+  });
+}
+
+function showGambleBar(successChance, resolve){
+  const breakOdds = 1 - successChance;
+
+  const dur = document.getElementById('durability');
+  const cursor = document.getElementById('dur-cursor');
+  const caption = document.getElementById('dur-caption');
+  const red = dur.querySelector('.dur-red');
+  const green = dur.querySelector('.dur-green');
+
+  const totalWidth = 320;
+  red.style.width = `${Math.round(breakOdds * totalWidth)}px`;
+  green.style.width = `${Math.round(successChance * totalWidth)}px`;
+
+  cursor.style.left = `0px`;
+  caption.textContent = "Checking durability…";
+  dur.classList.remove('hidden');
+
+  let dir = 1, pos = 0;
+  const speed = 6;
+  const interval = setInterval(() => {
+    pos += dir * speed;
+    if (pos < 0) { pos = 0; dir = 1; }
+    if (pos > totalWidth) { pos = totalWidth; dir = -1; }
+    cursor.style.left = `${pos}px`;
+  }, 16);
+
+  const succeed = Math.random() < successChance;
+
+  setTimeout(() => {
+    clearInterval(interval);
+    const min = succeed ? Math.round(breakOdds * totalWidth) + 6 : 6;
+    const max = succeed ? totalWidth - 6 : Math.round(breakOdds * totalWidth) - 6;
+    const stop = Math.max(6, Math.min(totalWidth-6, Math.floor(min + Math.random()*(max-min))));
+    cursor.style.left = `${stop}px`;
+
+    caption.textContent = succeed ? "It holds!" : "It shatters!";
+    setTimeout(() => { dur.classList.add('hidden'); resolve(succeed); }, 650);
+  }, 1200);
+}
+
+/* ========== POPUPS & UTILS ========== */
+function showMessage(msg, opts = {}) {
+  const popup = document.getElementById('popup');
+  const txt = document.getElementById('popup-text');
+  const actions = document.getElementById('popup-actions');
+  if (!popup || !txt || !actions) return;
+  txt.textContent = msg;
+  actions.innerHTML = ""; // no buttons
+  popup.classList.remove('hidden');
+  clearTimeout(window._popupTimer);
+  window._popupTimer = setTimeout(() => hidePopup(), 1600);
+}
+function hidePopup(){ document.getElementById('popup')?.classList.add('hidden'); }
+
+function confirmChoice(message, yesLabel="Yes", noLabel="No"){
+  return new Promise(resolve => {
+    const popup = document.getElementById('popup');
+    const txt = document.getElementById('popup-text');
+    const actions = document.getElementById('popup-actions');
+    if (!popup || !txt || !actions) { resolve(false); return; }
+
+    txt.textContent = message;
+    actions.innerHTML = "";
+
+    const yes = document.createElement('button');
+    yes.className = 'btn primary';
+    yes.textContent = yesLabel;
+
+    const no = document.createElement('button');
+    no.className = 'btn';
+    no.textContent = noLabel;
+
+    yes.addEventListener('click', () => { popup.classList.add('hidden'); resolve(true); });
+    no.addEventListener('click',  () => { popup.classList.add('hidden'); resolve(false); });
+
+    actions.appendChild(yes);
+    actions.appendChild(no);
+    popup.classList.remove('hidden');
+  });
+}
+
+/* Helpers */
 function shuffle(arr){
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
-}
-
-function showMessage(msg, opts = {}) {
-  const popup = document.getElementById('popup');
-  const txt = document.getElementById('popup-text');
-  if (!popup || !txt) return;
-  txt.textContent = msg;
-  popup.classList.remove('hidden');
-  clearTimeout(window._popupTimer);
-  window._popupTimer = setTimeout(() => hidePopup(), opts.sticky ? 2200 : 1600);
-}
-function hidePopup(){
-  document.getElementById('popup')?.classList.add('hidden');
 }
