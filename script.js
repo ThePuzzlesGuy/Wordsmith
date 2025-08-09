@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupBoard(/*restartSame=*/false);
   setupDragAndDrop();
 
-  // Only allow backdrop click to close when not "locked" (i.e., not a Continue modal)
+  // Only allow backdrop click to close when not "locked" (i.e., not a Continue/Confirm modal)
   const pop = document.getElementById('popup');
   pop?.addEventListener('click', (e) => {
     if (e.target.id === 'popup' && pop.dataset.dismiss !== 'locked') hidePopup();
@@ -46,9 +46,7 @@ function setupBoard(restartSame=false) {
     });
   }
 
-  if (restartSame && currentBoard) {
-    // reuse currentBoard
-  } else {
+  if (!(restartSame && currentBoard)) {
     let pool = boards.filter((_, i) => !completedBoards.includes(i));
     if (pool.length === 0) { completedBoards = []; pool = boards.slice(); }
     currentBoard = pool[Math.floor(Math.random() * pool.length)];
@@ -611,21 +609,29 @@ function getHiddenLockType(){
 }
 
 /* ========== POPUPS & UTILS ========== */
+function clearPopupTimer(){
+  if (window._popupTimer){
+    clearTimeout(window._popupTimer);
+    window._popupTimer = null;
+  }
+}
+
 function showMessage(msg, opts = {}) {
   const popup = document.getElementById('popup');
   const txt = document.getElementById('popup-text');
   const actions = document.getElementById('popup-actions');
   if (!popup || !txt || !actions) return;
+
+  clearPopupTimer();                // ← clear any old timer
   txt.textContent = msg;
-  actions.innerHTML = ""; // no buttons
-  popup.dataset.dismiss = ""; // allow backdrop close
+  actions.innerHTML = "";           // no buttons
+  popup.dataset.dismiss = "";       // allow backdrop close
   popup.classList.remove('hidden');
 
   const duration = (opts && typeof opts.duration === 'number')
     ? opts.duration
     : (opts.sticky ? 2200 : 1600);
 
-  clearTimeout(window._popupTimer);
   window._popupTimer = setTimeout(() => hidePopup(), duration);
 }
 
@@ -636,6 +642,7 @@ function showContinue(message, buttonLabel="Continue"){
     const actions = document.getElementById('popup-actions');
     if (!popup || !txt || !actions) { resolve(); return; }
 
+    clearPopupTimer();              // ← kill any previous auto-hide
     txt.textContent = message;
     actions.innerHTML = "";
 
@@ -645,7 +652,7 @@ function showContinue(message, buttonLabel="Continue"){
 
     btn.addEventListener('click', () => {
       popup.classList.add('hidden');
-      popup.dataset.dismiss = ""; // unlock backdrop for normal popups
+      popup.dataset.dismiss = "";   // unlock backdrop for normal popups
       resolve();
     });
 
@@ -656,7 +663,11 @@ function showContinue(message, buttonLabel="Continue"){
   });
 }
 
-function hidePopup(){ document.getElementById('popup')?.classList.add('hidden'); }
+function hidePopup(){
+  clearPopupTimer();                // ← ensure no stray timers fire later
+  const p = document.getElementById('popup');
+  if (p) p.classList.add('hidden');
+}
 
 function confirmChoice(message, yesLabel="Yes", noLabel="No"){
   return new Promise(resolve => {
@@ -665,6 +676,7 @@ function confirmChoice(message, yesLabel="Yes", noLabel="No"){
     const actions = document.getElementById('popup-actions');
     if (!popup || !txt || !actions) { resolve(false); return; }
 
+    clearPopupTimer();              // ← no auto-hide during choice
     txt.textContent = message;
     actions.innerHTML = "";
 
@@ -676,8 +688,8 @@ function confirmChoice(message, yesLabel="Yes", noLabel="No"){
     no.className = 'btn';
     no.textContent = noLabel;
 
-    yes.addEventListener('click', () => { popup.classList.add('hidden'); resolve(true); });
-    no.addEventListener('click',  () => { popup.classList.add('hidden'); resolve(false); });
+    yes.addEventListener('click', () => { popup.classList.add('hidden'); popup.dataset.dismiss=""; resolve(true); });
+    no.addEventListener('click',  () => { popup.classList.add('hidden'); popup.dataset.dismiss=""; resolve(false); });
 
     popup.dataset.dismiss = "locked";
     actions.appendChild(yes);
