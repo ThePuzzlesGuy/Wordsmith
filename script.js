@@ -1,21 +1,28 @@
 let boards = [];
-let validWords = [];
-let hiddenLockId = null;     // which specific lock holds the scroll (index in current row)
+let validWords = [];          // remaining words (uppercased) for the current board
+let remainingWords = [];      // alias for clarity
+let hiddenLockId = null;      // which lock has the scroll (index)
 let currentPath = [];
 let selectedLetters = [];
-let completedBoards = [];    // session-only rotation
+let completedBoards = [];     // session rotation only
+let currentBoard = null;      // keep the board so we can restart it on life loss
+
+// Progress
+let lives = 3;
+let scrolls = 0;
 
 document.addEventListener("DOMContentLoaded", async () => {
   await loadBoards();
-  setupBoard();
+  setupBoard(/*restartSame=*/false);
   setupDragAndDrop();
 
-  // Simple popup click hides
+  // Simple popup click hides (outside the card)
   document.getElementById('popup')?.addEventListener('click', (e) => {
     if (e.target.id === 'popup') hidePopup();
   });
 
   window.addEventListener('resize', sizeLocksRow);
+  updateProgressUI();
 });
 
 async function loadBoards() {
@@ -24,36 +31,43 @@ async function loadBoards() {
 }
 
 /* ========== BOARD + LOCKS ========== */
-function setupBoard() {
-  // mark existing keys as "carried" for the new round
-  document.querySelectorAll('#keys .key').forEach(k => {
-    k.dataset.carried = "true";
-    k.classList.add('carried');
-  });
+function setupBoard(restartSame=false) {
+  // When we start a NEW round, mark existing keys as carried
+  if (!restartSame) {
+    document.querySelectorAll('#keys .key').forEach(k => {
+      k.dataset.carried = "true";
+      k.classList.add('carried');
+    });
+  }
 
-  // choose an unused board (then reset rotation)
-  let pool = boards.filter((_, i) => !completedBoards.includes(i));
-  if (pool.length === 0) { completedBoards = []; pool = boards.slice(); }
-  const board = pool[Math.floor(Math.random() * pool.length)];
-  const actualIndex = boards.indexOf(board);
-  completedBoards.push(actualIndex);
+  // Pick board
+  if (restartSame && currentBoard) {
+    // use the same board again
+  } else {
+    let pool = boards.filter((_, i) => !completedBoards.includes(i));
+    if (pool.length === 0) { completedBoards = []; pool = boards.slice(); }
+    currentBoard = pool[Math.floor(Math.random() * pool.length)];
+    const actualIndex = boards.indexOf(currentBoard);
+    completedBoards.push(actualIndex);
+  }
 
   // theme
-  document.getElementById("theme").textContent = board.theme;
+  document.getElementById("theme").textContent = currentBoard.theme;
 
-  // valid words
-  validWords = board.words.map(w => w.toUpperCase());
+  // words (remaining)
+  remainingWords = currentBoard.words.map(w => w.toUpperCase());
+  validWords = remainingWords;
 
   // render letters
   const gridEl = document.getElementById("letter-grid");
   gridEl.innerHTML = "";
-  const cols = board.cols || Math.sqrt(board.grid.length) || 5;
+  const cols = currentBoard.cols || Math.sqrt(currentBoard.grid.length) || 5;
   gridEl.style.gridTemplateColumns = `repeat(${cols}, 74px)`;
 
-  for (let i = 0; i < board.grid.length; i++) {
+  for (let i = 0; i < currentBoard.grid.length; i++) {
     const div = document.createElement("div");
     div.className = "letter";
-    div.textContent = board.grid[i];
+    div.textContent = currentBoard.grid[i];
     div.dataset.index = i;
     div.dataset.active = "true";
     div.addEventListener("mousedown", startSelect);
@@ -62,7 +76,7 @@ function setupBoard() {
   }
 
   // build locks from word-length distribution
-  buildDynamicLocks(board.words);
+  buildDynamicLocks(currentBoard.words);
 
   // ensure single mouseup listener
   document.removeEventListener("mouseup", endSelect);
@@ -105,10 +119,10 @@ function buildDynamicLocks(words) {
     locksWrap.appendChild(lock);
   });
 
-  sizeLocksRow(); // fit single row
+  sizeLocksRow(); // fit single row (shrinks if >7)
 }
 
-/* Fit locks to the same width 7 full-size locks would use */
+/* Fit locks to same width 7 full-size locks would use */
 function sizeLocksRow() {
   const wrap = document.getElementById('locks');
   if (!wrap) return;
@@ -142,19 +156,20 @@ async function onLockDrop(e, lock) {
 
   if (!draggingKey) return;
 
-  // LOCK PICK: can open any lock with gamble flow
+  // LOCK PICK flow
   if (keyType === 'pick') {
     await handleLockPickDrop(lock, draggingKey);
+    maybeCheckLose();
     return;
   }
 
   // strict matching for normal keys (gold only opens gold now)
   if (keyType !== lockType) return;
 
-  // carried keys (wood/stone/gold) still have durability rolls, NOT for pick
+  // carried keys (wood/stone/gold) have durability rolls
   if (draggingKey.dataset.carried === "true") {
     const ok = await runDurabilityCheck(keyType);
-    if (!ok) { draggingKey.remove(); return; } // shattered
+    if (!ok) { draggingKey.remove(); maybeCheckLose(); return; } // shattered
   }
 
   draggingKey.remove();
@@ -165,12 +180,12 @@ async function onLockDrop(e, lock) {
   } else {
     lock.classList.add("failed");
     showMessage("Nothing behind this lock...");
+    maybeCheckLose();
   }
 }
 
 /* ===== Lock Pick flow ===== */
 async function handleLockPickDrop(lock, keyEl){
-  // Ask if they want to attempt multiple locks
   const wantMulti = await confirmChoice(
     "Use the lock pick on multiple locks?",
     "Yes, take the risk",
@@ -178,13 +193,11 @@ async function handleLockPickDrop(lock, keyEl){
   );
 
   if (!wantMulti) {
-    // open chosen only
     keyEl.remove();
     openLockSimple(lock, /*announce*/true);
     return;
   }
 
-  // First gamble: 50/50 to prime for 2 uses
   const ok50 = await runGamble(0.5);
   if (!ok50) {
     keyEl.remove();
@@ -192,7 +205,6 @@ async function handleLockPickDrop(lock, keyEl){
     return;
   }
 
-  // Offer second gamble for 3 uses (25% success)
   const tryThree = await confirmChoice(
     "Key is good for 2 uses. Try for 3 uses?",
     "Yes (25% risk)",
@@ -201,7 +213,6 @@ async function handleLockPickDrop(lock, keyEl){
 
   if (!tryThree) {
     keyEl.remove();
-    // chosen + 1 random wrong
     openLockSimple(lock, /*announce*/true);
     openRandomWrong(1, [Number(lock.dataset.id)]);
     return;
@@ -214,13 +225,11 @@ async function handleLockPickDrop(lock, keyEl){
     return;
   }
 
-  // Success: chosen + 2 wrong
   keyEl.remove();
   openLockSimple(lock, /*announce*/true);
   openRandomWrong(2, [Number(lock.dataset.id)]);
 }
 
-/* Open exactly one lock, announcing result (scroll message or single "Nothing...") */
 function openLockSimple(lock, announce){
   const isScrollHere = Number(lock.dataset.id) === Number(hiddenLockId);
   if (isScrollHere) {
@@ -228,10 +237,10 @@ function openLockSimple(lock, announce){
   } else {
     lock.classList.add("failed");
     if (announce) showMessage("Nothing behind this lock...");
+    maybeCheckLose();
   }
 }
 
-/* Open N additional wrong locks (no messages), excluding ids in "exclude" */
 function openRandomWrong(n, excludeIds = []) {
   const wrap = document.getElementById('locks');
   const candidates = Array.from(wrap.querySelectorAll('.lock'))
@@ -242,9 +251,14 @@ function openRandomWrong(n, excludeIds = []) {
     );
   shuffle(candidates);
   candidates.slice(0, n).forEach(l => l.classList.add('failed'));
+  // after multiple opens, check lose condition as well
+  maybeCheckLose();
 }
 
 function revealScroll(lock){
+  scrolls += 1;
+  updateProgressUI();
+
   showMessage("You've found the scroll!");
   const scroll = document.createElement("img");
   scroll.src = "sprites/scroll.png";
@@ -284,8 +298,16 @@ function endSelect() {
   const word = selectedLetters.join("");
 
   if (selectedLetters.length >= 3 && validWords.includes(word)) {
-    giveKey(word.length);
-    markUsedTiles(currentPath);
+    // consume this word once per board
+    const idx = remainingWords.indexOf(word);
+    if (idx !== -1) {
+      remainingWords.splice(idx, 1);
+      giveKey(word.length);
+      markUsedTiles(currentPath);
+    } else {
+      // Word already used earlier — treat as invalid
+      invalidWordFeedback(currentPath);
+    }
   } else if (selectedLetters.length >= 3) {
     invalidWordFeedback(currentPath);
   }
@@ -294,6 +316,9 @@ function endSelect() {
   selectedLetters = [];
   currentPath = [];
   document.body.classList.remove('no-select');
+
+  // after each attempt, check lose state
+  maybeCheckLose();
 }
 
 function markUsedTiles(tiles) {
@@ -348,7 +373,7 @@ function resetGame() {
   grid.style.opacity = 0;
   setTimeout(() => {
     grid.style.opacity = 1;
-    setupBoard(); // keep inventory (carryover)
+    setupBoard(/*restartSame=*/false); // new round, keys become "carried"
   }, 400);
 }
 
@@ -371,6 +396,7 @@ function setupDragAndDrop() {
       slot.appendChild(dragging);
       slot.classList.add('has-key');
       checkCombinerKeys(); // combine if both filled
+      maybeCheckLose();
     });
   });
 
@@ -378,6 +404,7 @@ function setupDragAndDrop() {
     e.preventDefault();
     document.querySelectorAll(".dragging").forEach(k => k.remove());
     [slotA, slotB].forEach(s => s.classList.toggle('has-key', !!s.querySelector('.key')));
+    maybeCheckLose();
   });
 
   keyArea.addEventListener("drop", e => {
@@ -389,6 +416,7 @@ function setupDragAndDrop() {
     if (empty) empty.appendChild(dragging); else keyArea.appendChild(dragging);
 
     [slotA, slotB].forEach(s => s.classList.toggle('has-key', !!s.querySelector('.key')));
+    maybeCheckLose();
   });
 }
 
@@ -407,7 +435,6 @@ function checkCombinerKeys() {
   if (t1 === "wood") result = "stone";
   else if (t1 === "stone") result = "gold";
   else if (t1 === "gold") result = "pick";
-
   if (!result) return;
 
   // consume inputs
@@ -434,10 +461,8 @@ function getCombinerSlots(){
 /* ========== DURABILITY & GAMBLE ========== */
 function runDurabilityCheck(keyType){
   return new Promise(resolve => {
-    // No durability for lock picks
     if (keyType === 'pick') { resolve(true); return; }
-
-    const survival = keyType === 'wood' ? 0.25 : keyType === 'stone' ? 0.5 : 0.75; // survive odds
+    const survival = keyType === 'wood' ? 0.25 : keyType === 'stone' ? 0.5 : 0.75;
     showGambleBar(survival, resolve);
   });
 }
@@ -478,14 +503,102 @@ function showGambleBar(successChance, resolve){
 
   setTimeout(() => {
     clearInterval(interval);
-    const min = succeed ? Math.round(breakOdds * totalWidth) + 6 : 6;
-    const max = succeed ? totalWidth - 6 : Math.round(breakOdds * totalWidth) - 6;
+    const min = succeed ? Math.round((1 - successChance) * totalWidth) + 6 : 6;
+    const max = succeed ? totalWidth - 6 : Math.round((1 - successChance) * totalWidth) - 6;
     const stop = Math.max(6, Math.min(totalWidth-6, Math.floor(min + Math.random()*(max-min))));
     cursor.style.left = `${stop}px`;
 
     caption.textContent = succeed ? "It holds!" : "It shatters!";
     setTimeout(() => { dur.classList.add('hidden'); resolve(succeed); }, 650);
   }, 1200);
+}
+
+/* ========== PROGRESSION & FAIL STATE ========== */
+function updateProgressUI(){
+  // hearts
+  const heartEls = Array.from(document.querySelectorAll('#hearts .heart'));
+  heartEls.forEach((el, i) => {
+    el.classList.toggle('lost', i >= lives);
+  });
+  // scrolls
+  document.getElementById('scroll-count').textContent = String(scrolls);
+}
+
+function maybeCheckLose(){
+  if (remainingWords.length > 0) return; // still can make words
+
+  // If we can open the hidden lock with current/combination inventory, not a loss
+  if (canOpenHiddenLock()) return;
+
+  // Lose a heart & restart same board
+  lives = Math.max(0, lives - 1);
+  updateProgressUI();
+
+  if (lives === 0) {
+    showMessage("Game Over", { sticky:true });
+    // full reset after a moment
+    setTimeout(() => {
+      // wipe inventory
+      document.getElementById('keys').innerHTML = `
+        <div class="inv-slot"></div>
+        <div class="inv-slot"></div>
+        <div class="inv-slot"></div>
+        <div class="inv-slot"></div>
+        <div class="inv-slot"></div>`;
+      // reset progress
+      lives = 3;
+      scrolls = 0;
+      updateProgressUI();
+      // start a fresh round (new board)
+      setupBoard(/*restartSame=*/false);
+      setupDragAndDrop();
+    }, 1200);
+  } else {
+    // same board retry, keep inventory
+    setupBoard(/*restartSame=*/true);
+  }
+}
+
+function canOpenHiddenLock(){
+  // Count keys in inventory AND combiner
+  const keys = document.querySelectorAll('#keys .key, #combiner .key');
+  const counts = { wood:0, stone:0, gold:0, pick:0 };
+  keys.forEach(k => { const t = k.dataset.type; if (counts[t] !== undefined) counts[t]++; });
+
+  // Any pick already available?
+  if (counts.pick > 0) return true;
+
+  const typeNeeded = getHiddenLockType();
+  if (!typeNeeded) return false;
+
+  if (typeNeeded === 'wood') {
+    return counts.wood > 0 || pickPossible(counts) > 0;
+  }
+  if (typeNeeded === 'stone') {
+    const stonesFromWood = Math.floor(counts.wood / 2);
+    return counts.stone > 0 || stonesFromWood > 0 || pickPossible(counts) > 0;
+  }
+  if (typeNeeded === 'gold') {
+    const stonesFromWood = Math.floor(counts.wood / 2);
+    const totalStones = counts.stone + stonesFromWood;
+    const goldFromStones = Math.floor(totalStones / 2);
+    return counts.gold > 0 || goldFromStones > 0 || pickPossible(counts) > 0;
+  }
+  return false;
+}
+
+function pickPossible(counts){
+  const stonesFromWood = Math.floor(counts.wood / 2);
+  const totalStones = counts.stone + stonesFromWood;
+  const goldFromStones = Math.floor(totalStones / 2);
+  const totalGold = counts.gold + goldFromStones;
+  const picks = Math.floor(totalGold / 2);
+  return picks;
+}
+
+function getHiddenLockType(){
+  const el = document.querySelector(`.lock[data-id="${hiddenLockId}"]`);
+  return el?.dataset.type || null;
 }
 
 /* ========== POPUPS & UTILS ========== */
@@ -498,7 +611,7 @@ function showMessage(msg, opts = {}) {
   actions.innerHTML = ""; // no buttons
   popup.classList.remove('hidden');
   clearTimeout(window._popupTimer);
-  window._popupTimer = setTimeout(() => hidePopup(), 1600);
+  window._popupTimer = setTimeout(() => hidePopup(), opts.sticky ? 2200 : 1600);
 }
 function hidePopup(){ document.getElementById('popup')?.classList.add('hidden'); }
 
