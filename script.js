@@ -1,22 +1,24 @@
 let boards = [];
-let validWords = [];          // remaining words (uppercased) for the current board
-let remainingWords = [];      // alias for clarity
-let hiddenLockId = null;      // which lock has the scroll (index)
+let validWords = [];          // allowed words (uppercased)
+let remainingWords = [];      // words not yet found
+let hiddenLockId = null;      // index of the scroll lock in current row
 let currentPath = [];
 let selectedLetters = [];
-let completedBoards = [];     // session rotation only
-let currentBoard = null;      // keep the board so we can restart it on life loss
+let completedBoards = [];     // session rotation
+let currentBoard = null;      // for retries
 
 // Progress
 let lives = 3;
 let scrolls = 0;
+
+// guard so we don't deduct multiple hearts at once
+let resolvingLoss = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
   await loadBoards();
   setupBoard(/*restartSame=*/false);
   setupDragAndDrop();
 
-  // Simple popup click hides (outside the card)
   document.getElementById('popup')?.addEventListener('click', (e) => {
     if (e.target.id === 'popup') hidePopup();
   });
@@ -32,17 +34,18 @@ async function loadBoards() {
 
 /* ========== BOARD + LOCKS ========== */
 function setupBoard(restartSame=false) {
-  // When we start a NEW round, mark existing keys as carried
+  resolvingLoss = false;
+
   if (!restartSame) {
+    // new round → mark keys as carried
     document.querySelectorAll('#keys .key').forEach(k => {
       k.dataset.carried = "true";
       k.classList.add('carried');
     });
   }
 
-  // Pick board
   if (restartSame && currentBoard) {
-    // use the same board again
+    // reuse currentBoard
   } else {
     let pool = boards.filter((_, i) => !completedBoards.includes(i));
     if (pool.length === 0) { completedBoards = []; pool = boards.slice(); }
@@ -51,14 +54,11 @@ function setupBoard(restartSame=false) {
     completedBoards.push(actualIndex);
   }
 
-  // theme
   document.getElementById("theme").textContent = currentBoard.theme;
 
-  // words (remaining)
   remainingWords = currentBoard.words.map(w => w.toUpperCase());
-  validWords = remainingWords;
+  validWords = remainingWords.slice();
 
-  // render letters
   const gridEl = document.getElementById("letter-grid");
   gridEl.innerHTML = "";
   const cols = currentBoard.cols || Math.sqrt(currentBoard.grid.length) || 5;
@@ -75,10 +75,8 @@ function setupBoard(restartSame=false) {
     gridEl.appendChild(div);
   }
 
-  // build locks from word-length distribution
   buildDynamicLocks(currentBoard.words);
 
-  // ensure single mouseup listener
   document.removeEventListener("mouseup", endSelect);
   document.addEventListener("mouseup", endSelect);
 }
@@ -87,7 +85,6 @@ function buildDynamicLocks(words) {
   const locksWrap = document.getElementById('locks');
   locksWrap.innerHTML = "";
 
-  // count by length → type
   let wood = 0, stone = 0, gold = 0;
   for (const w of words) {
     const L = w.trim().length;
@@ -119,10 +116,10 @@ function buildDynamicLocks(words) {
     locksWrap.appendChild(lock);
   });
 
-  sizeLocksRow(); // fit single row (shrinks if >7)
+  sizeLocksRow();
 }
 
-/* Fit locks to same width 7 full-size locks would use */
+/* Keep one-row locks; shrink for 8+ */
 function sizeLocksRow() {
   const wrap = document.getElementById('locks');
   if (!wrap) return;
@@ -131,9 +128,7 @@ function sizeLocksRow() {
   const styles = getComputedStyle(wrap);
   const gap = parseInt(styles.gap || 18, 10) || 18;
 
-  const BASE = 86;        // normal lock size (px)
-  const MIN  = 48;        // don't get tiny
-
+  const BASE = 86, MIN = 48;
   const targetWidth = 7 * BASE + (7 - 1) * gap;
 
   let size = BASE;
@@ -141,10 +136,10 @@ function sizeLocksRow() {
     size = Math.floor((targetWidth - (count - 1) * gap) / count);
     size = Math.max(MIN, Math.min(BASE, size));
   }
-
   wrap.style.setProperty('--lock-size', `${size}px`);
 }
 
+/* ========== LOCK INTERACTIONS ========== */
 async function onLockDrop(e, lock) {
   e.preventDefault();
   const draggingKey = document.querySelector(".dragging");
@@ -156,20 +151,17 @@ async function onLockDrop(e, lock) {
 
   if (!draggingKey) return;
 
-  // LOCK PICK flow
   if (keyType === 'pick') {
     await handleLockPickDrop(lock, draggingKey);
     maybeCheckLose();
     return;
   }
 
-  // strict matching for normal keys (gold only opens gold now)
   if (keyType !== lockType) return;
 
-  // carried keys (wood/stone/gold) have durability rolls
   if (draggingKey.dataset.carried === "true") {
     const ok = await runDurabilityCheck(keyType);
-    if (!ok) { draggingKey.remove(); maybeCheckLose(); return; } // shattered
+    if (!ok) { draggingKey.remove(); maybeCheckLose(); return; }
   }
 
   draggingKey.remove();
@@ -184,7 +176,7 @@ async function onLockDrop(e, lock) {
   }
 }
 
-/* ===== Lock Pick flow ===== */
+/* Lock pick flow (unchanged behavior) */
 async function handleLockPickDrop(lock, keyEl){
   const wantMulti = await confirmChoice(
     "Use the lock pick on multiple locks?",
@@ -251,7 +243,6 @@ function openRandomWrong(n, excludeIds = []) {
     );
   shuffle(candidates);
   candidates.slice(0, n).forEach(l => l.classList.add('failed'));
-  // after multiple opens, check lose condition as well
   maybeCheckLose();
 }
 
@@ -298,14 +289,12 @@ function endSelect() {
   const word = selectedLetters.join("");
 
   if (selectedLetters.length >= 3 && validWords.includes(word)) {
-    // consume this word once per board
     const idx = remainingWords.indexOf(word);
     if (idx !== -1) {
       remainingWords.splice(idx, 1);
       giveKey(word.length);
       markUsedTiles(currentPath);
     } else {
-      // Word already used earlier — treat as invalid
       invalidWordFeedback(currentPath);
     }
   } else if (selectedLetters.length >= 3) {
@@ -317,7 +306,6 @@ function endSelect() {
   currentPath = [];
   document.body.classList.remove('no-select');
 
-  // after each attempt, check lose state
   maybeCheckLose();
 }
 
@@ -373,7 +361,7 @@ function resetGame() {
   grid.style.opacity = 0;
   setTimeout(() => {
     grid.style.opacity = 1;
-    setupBoard(/*restartSame=*/false); // new round, keys become "carried"
+    setupBoard(/*restartSame=*/false);
   }, 400);
 }
 
@@ -391,11 +379,11 @@ function setupDragAndDrop() {
       e.preventDefault();
       const dragging = document.querySelector(".dragging");
       if (!dragging) return;
-      if (slot.querySelector('.key')) return; // one per slot
+      if (slot.querySelector('.key')) return;
 
       slot.appendChild(dragging);
       slot.classList.add('has-key');
-      checkCombinerKeys(); // combine if both filled
+      checkCombinerKeys();
       maybeCheckLose();
     });
   });
@@ -430,19 +418,16 @@ function checkCombinerKeys() {
   const t2 = k2.dataset.type;
   if (t1 !== t2) return;
 
-  // combine mapping: wood->stone, stone->gold, gold->pick
   let result = null;
   if (t1 === "wood") result = "stone";
   else if (t1 === "stone") result = "gold";
   else if (t1 === "gold") result = "pick";
   if (!result) return;
 
-  // consume inputs
   k1.remove(); k2.remove();
   slotA.classList.remove('has-key');
   slotB.classList.remove('has-key');
 
-  // spawn result
   if (result === 'pick') {
     spawnKey('pick');
     showMessage(`You've successfully crafted a Lock Pick!`);
@@ -515,30 +500,33 @@ function showGambleBar(successChance, resolve){
 
 /* ========== PROGRESSION & FAIL STATE ========== */
 function updateProgressUI(){
-  // hearts
   const heartEls = Array.from(document.querySelectorAll('#hearts .heart'));
-  heartEls.forEach((el, i) => {
-    el.classList.toggle('lost', i >= lives);
-  });
-  // scrolls
+  heartEls.forEach((el, i) => el.classList.toggle('lost', i >= lives));
   document.getElementById('scroll-count').textContent = String(scrolls);
 }
 
+/* NEW: robust loss check
+   You lose a heart if:
+   - No remaining word is possible with the currently ACTIVE letters, AND
+   - You cannot open the scroll lock with your keys (or by combining to a pick) */
 function maybeCheckLose(){
-  if (remainingWords.length > 0) return; // still can make words
+  if (resolvingLoss) return;
 
-  // If we can open the hidden lock with current/combination inventory, not a loss
+  // 1) If any remaining word is still possible with active letters, you can still progress.
+  if (isAnyRemainingWordPossible()) return;
+
+  // 2) If you can open the hidden lock now (or by combining), it's not a loss.
   if (canOpenHiddenLock()) return;
 
-  // Lose a heart & restart same board
+  // Otherwise: lose a life and restart SAME board (keep inventory).
+  resolvingLoss = true;
   lives = Math.max(0, lives - 1);
   updateProgressUI();
 
   if (lives === 0) {
     showMessage("Game Over", { sticky:true });
-    // full reset after a moment
     setTimeout(() => {
-      // wipe inventory
+      // reset inventory
       document.getElementById('keys').innerHTML = `
         <div class="inv-slot"></div>
         <div class="inv-slot"></div>
@@ -549,23 +537,53 @@ function maybeCheckLose(){
       lives = 3;
       scrolls = 0;
       updateProgressUI();
-      // start a fresh round (new board)
       setupBoard(/*restartSame=*/false);
       setupDragAndDrop();
+      resolvingLoss = false;
     }, 1200);
   } else {
-    // same board retry, keep inventory
-    setupBoard(/*restartSame=*/true);
+    // retry same board
+    setTimeout(() => {
+      setupBoard(/*restartSame=*/true);
+      resolvingLoss = false;
+    }, 300);
   }
 }
 
+/* Check if any remaining word can be formed from ACTIVE letters.
+   (No adjacency rules in this game → multiset check.) */
+function isAnyRemainingWordPossible(){
+  if (remainingWords.length === 0) return false;
+
+  // count active letters on board
+  const counts = {};
+  document.querySelectorAll('#letter-grid .letter').forEach(t => {
+    if (t.dataset.active === "true") {
+      const ch = (t.textContent || "").toUpperCase();
+      counts[ch] = (counts[ch] || 0) + 1;
+    }
+  });
+
+  // helper to see if word multiset fits within counts
+  const canMake = (word) => {
+    const need = {};
+    for (const ch of word.toUpperCase()) {
+      need[ch] = (need[ch] || 0) + 1;
+    }
+    for (const k in need) {
+      if (!counts[k] || counts[k] < need[k]) return false;
+    }
+    return true;
+  };
+
+  return remainingWords.some(canMake);
+}
+
 function canOpenHiddenLock(){
-  // Count keys in inventory AND combiner
   const keys = document.querySelectorAll('#keys .key, #combiner .key');
   const counts = { wood:0, stone:0, gold:0, pick:0 };
   keys.forEach(k => { const t = k.dataset.type; if (counts[t] !== undefined) counts[t]++; });
 
-  // Any pick already available?
   if (counts.pick > 0) return true;
 
   const typeNeeded = getHiddenLockType();
@@ -642,7 +660,6 @@ function confirmChoice(message, yesLabel="Yes", noLabel="No"){
   });
 }
 
-/* Helpers */
 function shuffle(arr){
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
