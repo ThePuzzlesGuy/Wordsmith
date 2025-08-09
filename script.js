@@ -1,13 +1,12 @@
 let boards = [];
 let validWords = [];
-let hiddenLock = '';
+let hiddenLockId = null;     // <- specific lock instance id
 let currentPath = [];
 let selectedLetters = [];
-let completedBoards = []; // session-only rotation
+let completedBoards = [];    // session-only rotation
 
 document.addEventListener("DOMContentLoaded", async () => {
   await loadBoards();
-  setupLocks();
   setupBoard();
   setupDragAndDrop();
 
@@ -21,6 +20,7 @@ async function loadBoards() {
   boards = await res.json();
 }
 
+/* ========== BOARD + LOCKS ========== */
 function setupBoard() {
   const gridEl = document.getElementById("letter-grid");
   gridEl.innerHTML = "";
@@ -28,7 +28,8 @@ function setupBoard() {
   // choose an unused board
   const unusedBoards = boards.filter((_, i) => !completedBoards.includes(i));
   if (unusedBoards.length === 0) {
-    showMessage("You've found the scroll!", { sticky: true }); // end-state message if you want
+    // optional: tell the user they've finished the set
+    showMessage("You've found the scroll!", { sticky: true });
     return;
   }
   const randomIndex = Math.floor(Math.random() * unusedBoards.length);
@@ -39,7 +40,6 @@ function setupBoard() {
   // data
   const grid = board.grid;
   validWords = board.words.map(w => w.toUpperCase());
-  hiddenLock = board.scrollLock;
 
   // theme into the sidebar card
   document.getElementById("theme").textContent = board.theme;
@@ -56,11 +56,91 @@ function setupBoard() {
     gridEl.appendChild(div);
   }
 
+  // build dynamic locks based on words (3->wood, 4->stone, 5+->gold)
+  buildDynamicLocks(board.words);
+
   // ensure single mouseup listener
   document.removeEventListener("mouseup", endSelect);
   document.addEventListener("mouseup", endSelect);
 }
 
+function buildDynamicLocks(words) {
+  const locksWrap = document.getElementById('locks');
+  locksWrap.innerHTML = "";
+
+  // count by length
+  let wood = 0, stone = 0, gold = 0;
+  for (const w of words) {
+    const L = w.trim().length;
+    if (L <= 0) continue;
+    if (L === 3) wood++;
+    else if (L === 4) stone++;
+    else gold++;
+  }
+
+  // construct lock types array
+  const lockTypes = [
+    ...Array(wood).fill('wood'),
+    ...Array(stone).fill('stone'),
+    ...Array(gold).fill('gold'),
+  ];
+
+  // shuffle
+  shuffle(lockTypes);
+
+  // choose a specific lock index to hide the scroll
+  hiddenLockId = Math.floor(Math.random() * lockTypes.length);
+
+  // render locks
+  lockTypes.forEach((type, i) => {
+    const lock = document.createElement('div');
+    lock.className = 'lock';
+    lock.dataset.type = type;
+    lock.dataset.id = String(i);
+    lock.innerHTML = `<img src="sprites/lock_${type}.png" alt="">`;
+
+    // DnD for keys
+    lock.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
+    lock.addEventListener("drop", e => onLockDrop(e, lock));
+
+    locksWrap.appendChild(lock);
+  });
+}
+
+function onLockDrop(e, lock) {
+  e.preventDefault();
+  const draggingKey = document.querySelector(".dragging");
+  const keyType = draggingKey?.dataset.type;
+  const lockType = lock.dataset.type;
+
+  lock.classList.add("jiggle");
+  setTimeout(() => lock.classList.remove("jiggle"), 500);
+
+  if (!draggingKey) return;
+
+  if (keyType === lockType) {
+    draggingKey.remove();
+    const isScrollHere = Number(lock.dataset.id) === Number(hiddenLockId);
+    if (isScrollHere) {
+      showMessage("You've found the scroll!");
+      const scroll = document.createElement("img");
+      scroll.src = "sprites/scroll.png";
+      scroll.style.position = "absolute";
+      scroll.style.top = "0";
+      scroll.style.left = "0";
+      scroll.style.width = "100%";
+      lock.appendChild(scroll);
+      setTimeout(() => resetGame(), 1500);
+    } else {
+      lock.classList.add("failed");
+      showMessage("Nothing behind this lock...");
+    }
+  } else {
+    // mismatch: no popup per your preference
+  }
+}
+
+/* ========== LETTER DRAG-SELECT ========== */
 function startSelect(e) {
   if (e.target.dataset.active !== "true") return;
   e.preventDefault();
@@ -91,10 +171,8 @@ function endSelect() {
   if (selectedLetters.length >= 3 && validWords.includes(word)) {
     giveKey(word.length);
     markUsedTiles(currentPath);
-    // no showMessage here
   } else if (selectedLetters.length >= 3) {
-    invalidWordFeedback(currentPath);
-    // no popup for invalid word per request
+    invalidWordFeedback(currentPath); // visual shake only
   }
 
   currentPath.forEach(el => el.style.background = "");
@@ -117,6 +195,7 @@ function invalidWordFeedback(tiles) {
   });
 }
 
+/* ========== KEYS, INVENTORY, COMBINER ========== */
 function giveKey(len) {
   let type = len === 3 ? 'wood' : len === 4 ? 'stone' : 'gold';
   const img = document.createElement("img");
@@ -138,60 +217,17 @@ function giveKey(len) {
   if (empty) empty.appendChild(img); else keyGrid.appendChild(img);
 }
 
-function setupLocks() {
-  document.querySelectorAll(".lock").forEach(lock => {
-    lock.innerHTML = `<img src="sprites/lock_${lock.dataset.type}.png" />`;
-
-    lock.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
-    lock.addEventListener("drop", e => {
-      e.preventDefault();
-      const draggingKey = document.querySelector(".dragging");
-      const keyType = draggingKey?.dataset.type;
-      const lockType = lock.dataset.type;
-
-      lock.classList.add("jiggle");
-      setTimeout(() => lock.classList.remove("jiggle"), 500);
-
-      if (keyType === lockType) {
-        draggingKey.remove();
-        if (lockType === hiddenLock) {
-          showMessage("You've found the scroll!");
-          const scroll = document.createElement("img");
-          scroll.src = "sprites/scroll.png";
-          scroll.style.position = "absolute";
-          scroll.style.top = "0";
-          scroll.style.left = "0";
-          scroll.style.width = "100%";
-          lock.appendChild(scroll);
-          setTimeout(() => resetGame(), 1500);
-        } else {
-          lock.classList.add("failed");
-          showMessage("Nothing behind this lock...");
-        }
-      } else {
-        // no popup here; mismatch feedback can be visual jiggle only if you want
-      }
-    });
-  });
-}
-
 function resetGame() {
   const grid = document.getElementById("letter-grid");
   grid.style.opacity = 0;
 
   setTimeout(() => {
     grid.style.opacity = 1;
-    document.querySelectorAll(".lock").forEach(lock => {
-      lock.classList.remove("failed");
-      lock.innerHTML = `<img src="sprites/lock_${lock.dataset.type}.png" />`;
-    });
 
-    // clear inventory keys BUT KEEP SLOTS (fixes disappearing slots)
+    // clear inventory keys BUT KEEP SLOTS
     clearInventoryKeys();
 
-    setupLocks();
     setupBoard();
-    // no "new round" popup
   }, 500);
 }
 
@@ -212,7 +248,7 @@ function setupDragAndDrop() {
   const { a:slotA, b:slotB } = getCombinerSlots();
 
   // Allow drag over on targets
-  [slotA, slotB, trash, keyArea, ...document.querySelectorAll(".lock")].forEach(area => {
+  [slotA, slotB, trash, keyArea].forEach(area => {
     area.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
   });
 
@@ -230,7 +266,7 @@ function setupDragAndDrop() {
     });
   });
 
-  // Trash — no popup, just delete
+  // Trash — silent delete
   trash.addEventListener("drop", e => {
     e.preventDefault();
     document.querySelectorAll(".dragging").forEach(k => k.remove());
@@ -286,7 +322,16 @@ function getCombinerSlots(){
   };
 }
 
-/* Popup-based messaging */
+/* ========== UTIL ========== */
+function shuffle(arr){
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/* ========== POPUP ========== */
 function showMessage(msg, opts = {}) {
   const popup = document.getElementById('popup');
   const txt = document.getElementById('popup-text');
