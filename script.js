@@ -1,6 +1,6 @@
 let boards = [];
 let validWords = [];
-let hiddenLockId = null;     // specific lock instance id (not just type)
+let hiddenLockId = null;     // which specific lock holds the scroll (index in current row)
 let currentPath = [];
 let selectedLetters = [];
 let completedBoards = [];    // session-only rotation
@@ -10,9 +10,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupBoard();
   setupDragAndDrop();
 
-  // click anywhere on popup to dismiss
-  const popup = document.getElementById('popup');
-  popup?.addEventListener('click', () => popup.classList.add('hidden'));
+  // Dismiss simple message popup on click
+  document.getElementById('popup')?.addEventListener('click', () => hidePopup());
 });
 
 async function loadBoards() {
@@ -22,43 +21,43 @@ async function loadBoards() {
 
 /* ========== BOARD + LOCKS ========== */
 function setupBoard() {
-  const gridEl = document.getElementById("letter-grid");
-  gridEl.innerHTML = "";
+  // mark existing keys as "carried" for the new round
+  document.querySelectorAll('#keys .key').forEach(k => {
+    k.dataset.carried = "true";
+    k.classList.add('carried');
+  });
 
-  // build the pool of available boards
+  // choose an unused board (then reset rotation)
   let pool = boards.filter((_, i) => !completedBoards.includes(i));
-  if (pool.length === 0) {
-    // finished the set — reset rotation and keep going seamlessly
-    completedBoards = [];
-    pool = boards.slice();
-  }
-
-  // pick a board from the current pool
-  const randomIndex = Math.floor(Math.random() * pool.length);
-  const board = pool[randomIndex];
+  if (pool.length === 0) { completedBoards = []; pool = boards.slice(); }
+  const board = pool[Math.floor(Math.random() * pool.length)];
   const actualIndex = boards.indexOf(board);
   completedBoards.push(actualIndex);
 
-  // board data
-  const grid = board.grid;
-  validWords = board.words.map(w => w.toUpperCase());
-
-  // theme into the sidebar card
+  // theme
   document.getElementById("theme").textContent = board.theme;
 
+  // valid words
+  validWords = board.words.map(w => w.toUpperCase());
+
   // render letters
-  for (let i = 0; i < grid.length; i++) {
+  const gridEl = document.getElementById("letter-grid");
+  gridEl.innerHTML = "";
+  const cols = board.cols || Math.sqrt(board.grid.length) || 5;
+  gridEl.style.gridTemplateColumns = `repeat(${cols}, 74px)`;
+
+  for (let i = 0; i < board.grid.length; i++) {
     const div = document.createElement("div");
     div.className = "letter";
-    div.textContent = grid[i];
+    div.textContent = board.grid[i];
     div.dataset.index = i;
     div.dataset.active = "true";
     div.addEventListener("mousedown", startSelect);
     div.addEventListener("mouseenter", continueSelect);
-    document.getElementById("letter-grid").appendChild(div);
+    gridEl.appendChild(div);
   }
 
-  // build dynamic locks based on words (3->wood, 4->stone, 5+->gold)
+  // build locks from the distribution implied by word lengths
   buildDynamicLocks(board.words);
 
   // ensure single mouseup listener
@@ -70,30 +69,25 @@ function buildDynamicLocks(words) {
   const locksWrap = document.getElementById('locks');
   locksWrap.innerHTML = "";
 
-  // count by length
+  // count by length → type
   let wood = 0, stone = 0, gold = 0;
   for (const w of words) {
     const L = w.trim().length;
-    if (L <= 0) continue;
+    if (!L) continue;
     if (L === 3) wood++;
     else if (L === 4) stone++;
     else gold++;
   }
 
-  // construct lock types array
   const lockTypes = [
     ...Array(wood).fill('wood'),
     ...Array(stone).fill('stone'),
     ...Array(gold).fill('gold'),
   ];
 
-  // shuffle
   shuffle(lockTypes);
-
-  // choose a specific lock index to hide the scroll
   hiddenLockId = Math.floor(Math.random() * lockTypes.length);
 
-  // render locks
   lockTypes.forEach((type, i) => {
     const lock = document.createElement('div');
     lock.className = 'lock';
@@ -101,7 +95,6 @@ function buildDynamicLocks(words) {
     lock.dataset.id = String(i);
     lock.innerHTML = `<img src="sprites/lock_${type}.png" alt="">`;
 
-    // DnD for keys
     lock.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
     lock.addEventListener("drop", e => onLockDrop(e, lock));
 
@@ -109,7 +102,7 @@ function buildDynamicLocks(words) {
   });
 }
 
-function onLockDrop(e, lock) {
+async function onLockDrop(e, lock) {
   e.preventDefault();
   const draggingKey = document.querySelector(".dragging");
   const keyType = draggingKey?.dataset.type;
@@ -120,26 +113,51 @@ function onLockDrop(e, lock) {
 
   if (!draggingKey) return;
 
-  if (keyType === lockType) {
-    draggingKey.remove();
-    const isScrollHere = Number(lock.dataset.id) === Number(hiddenLockId);
-    if (isScrollHere) {
-      showMessage("You've found the scroll!");
-      const scroll = document.createElement("img");
-      scroll.src = "sprites/scroll.png";
-      scroll.style.position = "absolute";
-      scroll.style.top = "0";
-      scroll.style.left = "0";
-      scroll.style.width = "100%";
-      lock.appendChild(scroll);
-      setTimeout(() => resetGame(), 1500);
-    } else {
-      lock.classList.add("failed");
-      showMessage("Nothing behind this lock...");
-    }
-  } else {
-    // mismatch: silent (no popup)
+  // strict matching (no overkill)
+  if (keyType !== lockType) return;
+
+  // if carried, run durability mini-game first
+  if (draggingKey.dataset.carried === "true") {
+    const ok = await runDurabilityCheck(keyType);
+    if (!ok) { draggingKey.remove(); return; } // shattered
   }
+
+  // consume the key
+  draggingKey.remove();
+
+  const isScrollHere = Number(lock.dataset.id) === Number(hiddenLockId);
+  if (isScrollHere) {
+    showMessage("You've found the scroll!");
+    const scroll = document.createElement("img");
+    scroll.src = "sprites/scroll.png";
+    scroll.style.position = "absolute";
+    scroll.style.top = "0";
+    scroll.style.left = "0";
+    scroll.style.width = "100%";
+    lock.appendChild(scroll);
+    setTimeout(() => resetGame(), 1500);
+  } else {
+    lock.classList.add("failed");
+    showMessage("Nothing behind this lock...");
+
+    // gold bonus: darken one extra wrong lock
+    if (keyType === 'gold') {
+      darkenAnotherWrongLock(Number(lock.dataset.id));
+    }
+  }
+}
+
+function darkenAnotherWrongLock(excludeId) {
+  const locksWrap = document.getElementById('locks');
+  const candidates = Array.from(locksWrap.querySelectorAll('.lock'))
+    .filter(l =>
+      !l.classList.contains('failed') &&
+      Number(l.dataset.id) !== hiddenLockId &&
+      Number(l.dataset.id) !== Number(excludeId)
+    );
+  if (candidates.length === 0) return;
+  const pick = candidates[Math.floor(Math.random() * candidates.length)];
+  pick.classList.add('failed');
 }
 
 /* ========== LETTER DRAG-SELECT ========== */
@@ -169,7 +187,7 @@ function continueSelect(e) {
 function endSelect() {
   const word = selectedLetters.join("");
 
-  // Generate key on valid word, but NO popup
+  // valid word → grant key (no popup)
   if (selectedLetters.length >= 3 && validWords.includes(word)) {
     giveKey(word.length);
     markUsedTiles(currentPath);
@@ -199,14 +217,24 @@ function invalidWordFeedback(tiles) {
 
 /* ========== KEYS, INVENTORY, COMBINER ========== */
 function giveKey(len) {
-  let type = len === 3 ? 'wood' : len === 4 ? 'stone' : 'gold';
+  const type = len === 3 ? 'wood' : len === 4 ? 'stone' : 'gold';
+  const inv = document.getElementById("inventory");
+  const keyGrid = document.getElementById("keys");
+
+  // capacity check (5 slots)
+  const emptySlot = Array.from(keyGrid.querySelectorAll('.inv-slot')).find(s => !s.querySelector('.key'));
+  if (!emptySlot) {
+    inv.classList.add('full');
+    setTimeout(() => inv.classList.remove('full'), 320);
+    return; // drop the reward if full
+  }
+
   const img = document.createElement("img");
   img.src = `sprites/key_${type}.png`;
   img.className = "key";
   img.dataset.type = type;
   img.draggable = true;
 
-  // reliable dragstart for FF/Edge
   img.addEventListener("dragstart", (e) => {
     e.dataTransfer.setData("text/plain", img.dataset.type || "key");
     e.dataTransfer.effectAllowed = "move";
@@ -214,9 +242,7 @@ function giveKey(len) {
   });
   img.addEventListener("dragend", () => img.classList.remove("dragging"));
 
-  const keyGrid = document.getElementById("keys");
-  const empty = Array.from(keyGrid.querySelectorAll('.inv-slot')).find(s => !s.querySelector('.key'));
-  if (empty) empty.appendChild(img); else keyGrid.appendChild(img);
+  emptySlot.appendChild(img);
 }
 
 function resetGame() {
@@ -225,24 +251,9 @@ function resetGame() {
 
   setTimeout(() => {
     grid.style.opacity = 1;
-
-    // clear inventory keys BUT KEEP SLOTS
-    clearInventoryKeys();
-
-    // load next board (auto-resets rotation if we finished the set)
+    // keep inventory (carryover)
     setupBoard();
-  }, 500);
-}
-
-function clearInventoryKeys() {
-  const keyGrid = document.getElementById("keys");
-  keyGrid.querySelectorAll('.key').forEach(k => k.remove());
-  // also clear combiner slots
-  const { a:slotA, b:slotB } = getCombinerSlots();
-  [slotA, slotB].forEach(s => {
-    s.querySelectorAll('.key').forEach(k => k.remove());
-    s.classList.remove('has-key');
-  });
+  }, 400);
 }
 
 function setupDragAndDrop() {
@@ -250,18 +261,16 @@ function setupDragAndDrop() {
   const keyArea = document.getElementById("keys");
   const { a:slotA, b:slotB } = getCombinerSlots();
 
-  // Allow drag over on targets
   [slotA, slotB, trash, keyArea].forEach(area => {
     area.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
   });
 
-  // Drop into individual combiner slots
   [slotA, slotB].forEach(slot => {
     slot.addEventListener("drop", e => {
       e.preventDefault();
       const dragging = document.querySelector(".dragging");
       if (!dragging) return;
-      if (slot.querySelector('.key')) return; // one key per slot
+      if (slot.querySelector('.key')) return; // one per slot
 
       slot.appendChild(dragging);
       slot.classList.add('has-key');
@@ -269,14 +278,12 @@ function setupDragAndDrop() {
     });
   });
 
-  // Trash — silent delete
   trash.addEventListener("drop", e => {
     e.preventDefault();
     document.querySelectorAll(".dragging").forEach(k => k.remove());
     [slotA, slotB].forEach(s => s.classList.toggle('has-key', !!s.querySelector('.key')));
   });
 
-  // Return to inventory: drop anywhere in #keys -> into first empty slot
   keyArea.addEventListener("drop", e => {
     e.preventDefault();
     const dragging = document.querySelector(".dragging");
@@ -309,23 +316,69 @@ function checkCombinerKeys() {
   slotA.classList.remove('has-key');
   slotB.classList.remove('has-key');
 
-  // output to inventory
+  // create result key (fresh, not carried)
   giveKey(upgraded === "stone" ? 4 : 5);
 
-  // success popup with requested phrasing
+  // success popup (your phrasing)
   const label = upgraded.charAt(0).toUpperCase() + upgraded.slice(1);
   showMessage(`You've successfully crafted a ${label} key!`);
 }
 
 function getCombinerSlots(){
   const c = document.getElementById('combiner');
-  return {
-    a: c.querySelector('.slot.a'),
-    b: c.querySelector('.slot.b')
-  };
+  return { a: c.querySelector('.slot.a'), b: c.querySelector('.slot.b') };
 }
 
-/* ========== UTIL ========== */
+/* ========== DURABILITY MINI-GAME ========== */
+function runDurabilityCheck(keyType){
+  return new Promise(resolve => {
+    const survival = keyType === 'wood' ? 0.25 : keyType === 'stone' ? 0.5 : 0.75; // survive odds
+    const breakOdds = 1 - survival;
+
+    const dur = document.getElementById('durability');
+    const cursor = document.getElementById('dur-cursor');
+    const caption = document.getElementById('dur-caption');
+    const red = dur.querySelector('.dur-red');
+    const green = dur.querySelector('.dur-green');
+
+    // set bar proportions
+    const totalWidth = 320;
+    red.style.width = `${Math.round(breakOdds * totalWidth)}px`;
+    green.style.width = `${Math.round(survival * totalWidth)}px`;
+
+    // reset cursor & text
+    cursor.style.left = `0px`;
+    caption.textContent = "Checking durability…";
+    dur.classList.remove('hidden');
+
+    // simple left-right wiggle for ~1.2s
+    let dir = 1, pos = 0;
+    const speed = 6; // px per tick
+    const interval = setInterval(() => {
+      pos += dir * speed;
+      if (pos < 0) { pos = 0; dir = 1; }
+      if (pos > totalWidth) { pos = totalWidth; dir = -1; }
+      cursor.style.left = `${pos}px`;
+    }, 16);
+
+    // pick result
+    const succeed = Math.random() < survival;
+
+    setTimeout(() => {
+      clearInterval(interval);
+      // land cursor inside the success/failed zone
+      const min = succeed ? Math.round(breakOdds * totalWidth) + 6 : 6;
+      const max = succeed ? totalWidth - 6 : Math.round(breakOdds * totalWidth) - 6;
+      const stop = Math.max(6, Math.min(totalWidth-6, Math.floor(min + Math.random()*(max-min))));
+      cursor.style.left = `${stop}px`;
+
+      caption.textContent = succeed ? "It holds!" : "It shatters!";
+      setTimeout(() => { dur.classList.add('hidden'); resolve(succeed); }, 650);
+    }, 1200);
+  });
+}
+
+/* ========== UTIL & POPUPS ========== */
 function shuffle(arr){
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -334,17 +387,15 @@ function shuffle(arr){
   return arr;
 }
 
-/* ========== POPUP ========== */
 function showMessage(msg, opts = {}) {
   const popup = document.getElementById('popup');
   const txt = document.getElementById('popup-text');
   if (!popup || !txt) return;
-
   txt.textContent = msg;
   popup.classList.remove('hidden');
-
   clearTimeout(window._popupTimer);
-  if (!opts.sticky) {
-    window._popupTimer = setTimeout(() => popup.classList.add('hidden'), 1600);
-  }
+  window._popupTimer = setTimeout(() => hidePopup(), opts.sticky ? 2200 : 1600);
+}
+function hidePopup(){
+  document.getElementById('popup')?.classList.add('hidden');
 }
