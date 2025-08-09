@@ -12,6 +12,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Dismiss simple message popup on click
   document.getElementById('popup')?.addEventListener('click', () => hidePopup());
+
+  // Refit locks on resize
+  window.addEventListener('resize', sizeLocksRow);
 });
 
 async function loadBoards() {
@@ -100,6 +103,30 @@ function buildDynamicLocks(words) {
 
     locksWrap.appendChild(lock);
   });
+
+  // Fit the row to one line (shrink if >7)
+  sizeLocksRow();
+}
+
+/* Fit locks to one row: if count > 7, shrink to fit container width */
+function sizeLocksRow() {
+  const wrap = document.getElementById('locks');
+  if (!wrap) return;
+
+  const count = wrap.children.length;
+  const gap = parseInt(getComputedStyle(wrap).columnGap || getComputedStyle(wrap).gap || 18, 10) || 18;
+  const wrapWidth = wrap.clientWidth;
+
+  const BASE = 86;  // px
+  const MIN  = 56;  // don't get too tiny
+
+  let size = BASE;
+  if (count > 7) {
+    const available = wrapWidth - gap * (count - 1);
+    size = Math.max(MIN, Math.floor(available / count));
+  }
+
+  wrap.style.setProperty('--lock-size', `${size}px`);
 }
 
 async function onLockDrop(e, lock) {
