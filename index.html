@@ -19,13 +19,9 @@
 
   <main id="app">
     <section class="play-area">
-      <!-- Locks row -->
+      <!-- Locks row (now built dynamically in JS) -->
       <div class="locks-strip">
-        <div id="locks" class="locks">
-          <div class="lock" data-type="wood"><img src="sprites/lock_wood.png" alt=""></div>
-          <div class="lock" data-type="stone"><img src="sprites/lock_stone.png" alt=""></div>
-          <div class="lock" data-type="gold"><img src="sprites/lock_gold.png" alt=""></div>
-        </div>
+        <div id="locks" class="locks"></div>
       </div>
 
       <!-- Parchment board -->
@@ -46,7 +42,7 @@
       <div class="legend card">
         <ul>
           <li><img class="legend-key" src="sprites/key_wood.png" alt=""> 3 Letters</li>
-          <li><img class="legend-key" src="sprites/key_stone.png" alt=""> 4 Letters</li>
+        <li><img class="legend-key" src="sprites/key_stone.png" alt=""> 4 Letters</li>
           <li><img class="legend-key" src="sprites/key_gold.png" alt=""> 5+ Letters</li>
         </ul>
       </div>
@@ -72,7 +68,7 @@
       <div id="inventory-ui">
         <div class="inventory-section">
           <div id="keys" class="key-grid">
-            <!-- Start with 12 slots; add more if you like -->
+            <!-- 12 slots to start; add/remove if you want -->
             <div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div>
             <div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div>
             <div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div>
