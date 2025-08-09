@@ -55,7 +55,7 @@ body{
 }
 .locks{
   display:flex; gap:18px; justify-content:center; align-items:center;
-  flex-wrap: wrap;          /* can wrap for many locks */
+  flex-wrap: wrap;
 }
 .lock{ width:86px; height:86px; position:relative; }
 .lock img{ width:100%; height:100%; object-fit:contain; transition:transform .2s; }
@@ -79,17 +79,16 @@ body{
   box-shadow: inset 0 10px 25px rgba(0,0,0,.12);
 }
 
-/* Grid */
+/* Grid: columns set dynamically by JS based on board.cols */
 #letter-grid,
 #letter-grid.grid{
-  display:grid; grid-template-columns: repeat(5, 74px); gap:10px; justify-content:center;
+  display:grid; gap:10px; justify-content:center;
 }
 
 .letter{
   width:74px; height:74px; border-radius:16px;
   background:#f6e7c5; border:2px solid #7a5836; color:#2b1c12;
-
-  display:flex; align-items:center; justify-content:center;  /* center text */
+  display:flex; align-items:center; justify-content:center;
   font-size:28px; font-weight:900; letter-spacing:1px;
   text-shadow:0 1px 0 #fff7e0;
   box-shadow:0 2px 0 #b18a5b, 0 6px 14px rgba(0,0,0,.15);
@@ -125,13 +124,12 @@ body{
 .theme-label{ font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#8a6a3e; }
 .theme-value{ font-size:18px; font-weight:900; color:#5a3d1e; }
 
+/* Legend */
 .legend ul{ list-style:none; padding:0; margin:0; display:grid; gap:8px; }
-.legend li{
-  display:flex; align-items:center; gap:10px; font-weight:700; color:#4a3826;
-}
+.legend li{ display:flex; align-items:center; gap:10px; font-weight:700; color:#4a3826; }
 .legend-key{ width:22px; height:22px; object-fit:contain; }
 
-/* Combiner + Trash stack (two visible slots) */
+/* Combiner + Trash stack */
 .slot-stack{ display:flex; flex-direction:column; gap:12px; }
 .drop-zone{
   min-height:84px; border-radius:14px; padding:8px; display:flex; justify-content:center; align-items:center;
@@ -157,38 +155,24 @@ body{
 /* ===== Inventory dock ===== */
 .inventory-dock{
   margin:16px auto 28px; padding:0 18px; max-width:1100px;
-
-  /* center the inventory and let it shrink-wrap */
   display:flex; justify-content:center;
 }
 .inventory{
   background:linear-gradient(180deg,#fff8e8,#f6ebcf);
   border:2px solid #d9c59b; border-radius:16px; box-shadow: var(--shadow);
   padding:12px 14px;
-  display:inline-block;          /* shrink-wrap background to content */
+  display:inline-block; /* shrink-wrap background to content */
 }
 .inventory h2{ display:none; }
-#inventory-ui{ }
 .inventory-section{ background:transparent; box-shadow:none; padding:0 }
 
-/* Slot-based inventory that wraps cleanly */
 .key-grid{
-  display:flex;
-  flex-wrap:wrap;
-  gap:10px;
-  align-items:center;
-  justify-content:flex-start;
-  padding:10px;
-  min-width:0;
+  display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:flex-start; padding:10px;
 }
 .inv-slot{
-  width:56px; height:56px;
-  border-radius:10px;
-  background:#fff7e2;
-  border:2px solid #d6ba84;
-  box-shadow: inset 0 2px 8px rgba(0,0,0,.06);
-  display:flex; align-items:center; justify-content:center;
-  flex:0 0 56px;               /* fixed width so wrapping is tidy */
+  width:56px; height:56px; border-radius:10px; background:#fff7e2;
+  border:2px solid #d6ba84; box-shadow: inset 0 2px 8px rgba(0,0,0,.06);
+  display:flex; align-items:center; justify-content:center; flex:0 0 56px;
 }
 
 /* Keys */
@@ -196,26 +180,45 @@ body{
   width:48px; height:48px; max-width:48px; max-height:48px;
   border:1px solid #6f5a3e; border-radius:10px; background:#fff;
   box-shadow:0 2px 4px rgba(0,0,0,.1);
-  object-fit:contain;
-  -webkit-user-drag:element; user-drag:element; cursor:grab;
+  object-fit:contain; -webkit-user-drag:element; user-drag:element; cursor:grab;
 }
 .key:active{ transform:scale(.96) }
+.key.carried{ outline:2px dashed rgba(0,0,0,.15); outline-offset:2px; }
 
-/* Popup overlay */
-.popup{
-  position:fixed; inset:0; z-index:50;
-  display:flex; align-items:center; justify-content:center;
-  background:rgba(0,0,0,.35);
+/* Inventory full shake */
+@keyframes invShake {
+  0%,100%{ transform:translateX(0) }
+  25%{ transform:translateX(-4px) } 75%{ transform:translateX(4px) }
 }
+.inventory.full { animation:invShake .3s }
+
+/* Popup: simple message */
+.popup{ position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.35); }
 .popup.hidden{ display:none; }
 .popup-card{
-  min-width:280px; max-width:80vw;
-  background:#fff8e8;
-  border:2px solid #e3cfa6; border-radius:16px;
-  box-shadow:0 12px 30px rgba(0,0,0,.25);
-  padding:16px 18px; text-align:center;
+  min-width:280px; max-width:80vw; background:#fff8e8; border:2px solid #e3cfa6; border-radius:16px;
+  box-shadow:0 12px 30px rgba(0,0,0,.25); padding:16px 18px; text-align:center;
 }
 #popup-text{ font-weight:800; color:#5a3d1e; }
+
+/* Popup: durability mini-game */
+.dur-card{
+  min-width:340px; max-width:88vw; background:#fffdf4; border:2px solid #ead8b3; border-radius:16px;
+  box-shadow:0 12px 30px rgba(0,0,0,.25); padding:16px 18px; text-align:center;
+}
+.dur-title{ font-weight:900; color:#5a3d1e; margin-bottom:10px; }
+.dur-bar{
+  position:relative; height:26px; border-radius:14px; overflow:hidden; border:2px solid #ccb487; background:#f8f0d9;
+  display:flex; width:320px; margin:0 auto 8px;
+}
+.dur-red{ background:#f4b5b5; height:100%; }
+.dur-green{ background:#bff0c3; height:100%; flex:1; }
+.dur-cursor{
+  position:absolute; top:-6px; width:24px; height:38px; border-radius:6px; background:#fff; border:2px solid #a97b2a;
+  box-shadow:0 4px 10px rgba(0,0,0,.2);
+  left:0; transform:translateX(-50%);
+}
+.dur-caption{ font-weight:700; color:#5a3d1e; }
 
 /* Toast (unused) */
 .toast{ margin-top:8px; font-weight:700; color:#3b5d27; text-shadow:0 1px 0 #fff }
