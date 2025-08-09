@@ -4,13 +4,13 @@
     "cols": 7,
     "rows": 5,
     "grid": [
-      "G","O","L","E","S","A","R",
-      "K","D","N","O","T","E","Y",
-      "Y","E","L","E","R","C","W",
-      "K","O","O","C","W","O","O",
-      "C","W","O","D","S","L","K"
+      "G","O","L","E","S","M","H",
+      "K","D","N","O","T","A","M",
+      "Y","E","L","E","R","R","E",
+      "K","O","O","C","W","N","I",
+      "C","W","O","D","S","A","L"
     ],
-    "words": ["GOLD","STONE","KEY","LOCK","WOOD","SAW","SCREW"]
+    "words": ["GOLD","STONE","KEY","LOCK","WOOD","SAW","SCREW","HAMMER","NAIL"]
   },
   {
     "theme": "Materials",
@@ -26,3 +26,4 @@
     "words": ["IRON","STONE","KEY","LOCK","WOOD","SAW","SCREW"]
   }
 ]
+
