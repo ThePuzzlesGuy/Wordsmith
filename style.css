@@ -9,7 +9,7 @@
   --card:#f9f4ea;
   --shadow:0 8px 20px rgba(0,0,0,.18);
 
-  /* Locks sizing (JS updates --lock-size on #locks) */
+  /* Locks sizing */
   --lock-gap: 18px;
   --lock-size: 86px; /* default */
 }
@@ -56,13 +56,14 @@ body{
 .locks-strip{
   background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,.05));
   border-radius:16px; padding:10px 14px; box-shadow: var(--shadow);
+  overflow:hidden; /* avoid tiny overflow while sizing */
 }
 .locks{
   display:flex;
   gap: var(--lock-gap);
   justify-content:center;
   align-items:center;
-  flex-wrap: nowrap;       /* stay on one line */
+  flex-wrap: nowrap; /* keep one row */
 }
 .lock{
   width: var(--lock-size);
@@ -165,7 +166,7 @@ body{
 
 /* ===== Inventory dock ===== */
 .inventory-dock{
-  grid-column: 1 / 2;   /* under the board column */
+  grid-column: 1 / 2;
   margin:16px 0 28px;
   padding:0;
   display:flex;
@@ -175,13 +176,11 @@ body{
   background:linear-gradient(180deg,#fff8e8,#f6ebcf);
   border:2px solid #d9c59b; border-radius:16px; box-shadow: var(--shadow);
   padding:12px 14px;
-  display:inline-block; /* shrink-wrap background to content */
+  display:inline-block;
 }
 .inventory h2{ display:none; }
 .inventory-section{ background:transparent; box-shadow:none; padding:0 }
-.key-grid{
-  display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:flex-start; padding:10px;
-}
+.key-grid{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:flex-start; padding:10px; }
 .inv-slot{
   width:56px; height:56px; border-radius:10px; background:#fff7e2;
   border:2px solid #d6ba84; box-shadow: inset 0 2px 8px rgba(0,0,0,.06);
@@ -202,16 +201,23 @@ body{
 @keyframes invShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
 .inventory.full { animation:invShake .3s }
 
-/* Popup: simple message */
+/* Popup: simple message + actions */
 .popup{ position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.35); }
 .popup.hidden{ display:none; }
 .popup-card{
-  min-width:280px; max-width:80vw; background:#fff8e8; border:2px solid #e3cfa6; border-radius:16px;
+  min-width:300px; max-width:80vw; background:#fff8e8; border:2px solid #e3cfa6; border-radius:16px;
   box-shadow:0 12px 30px rgba(0,0,0,.25); padding:16px 18px; text-align:center;
 }
 #popup-text{ font-weight:800; color:#5a3d1e; }
+.popup-actions{ display:flex; gap:10px; justify-content:center; margin-top:12px; }
+.btn{
+  border:2px solid #d1b379; background:#fff7dd; color:#5a3d1e; font-weight:800; padding:8px 12px; border-radius:10px; cursor:pointer;
+}
+.btn:hover{ background:#ffefc5; }
+.btn.primary{ background:#ffe3a3; border-color:#c9a051; }
+.btn.primary:hover{ background:#ffd777; }
 
-/* Popup: durability mini-game */
+/* Popup: durability / gamble bar */
 .dur-card{
   min-width:340px; max-width:88vw; background:#fffdf4; border:2px solid #ead8b3; border-radius:16px;
   box-shadow:0 12px 30px rgba(0,0,0,.25); padding:16px 18px; text-align:center;
