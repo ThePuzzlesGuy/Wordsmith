@@ -19,7 +19,7 @@
 
   <main id="app">
     <section class="play-area">
-      <!-- Locks row (now built dynamically in JS) -->
+      <!-- Locks row (built dynamically) -->
       <div class="locks-strip">
         <div id="locks" class="locks"></div>
       </div>
@@ -32,7 +32,7 @@
       </div>
     </section>
 
-    <!-- Right sidebar: theme card + legend + combiner stack -->
+    <!-- Right sidebar -->
     <aside class="sidebar">
       <div id="theme-card" class="card theme-card">
         <div class="theme-label">Theme</div>
@@ -42,7 +42,7 @@
       <div class="legend card">
         <ul>
           <li><img class="legend-key" src="sprites/key_wood.png" alt=""> 3 Letters</li>
-        <li><img class="legend-key" src="sprites/key_stone.png" alt=""> 4 Letters</li>
+          <li><img class="legend-key" src="sprites/key_stone.png" alt=""> 4 Letters</li>
           <li><img class="legend-key" src="sprites/key_gold.png" alt=""> 5+ Letters</li>
         </ul>
       </div>
@@ -62,30 +62,45 @@
     </aside>
   </main>
 
-  <!-- Bottom inventory dock -->
+  <!-- Inventory dock -->
   <footer class="inventory-dock">
     <div id="inventory" class="inventory">
       <div id="inventory-ui">
         <div class="inventory-section">
           <div id="keys" class="key-grid">
-            <!-- 12 slots to start; add/remove if you want -->
-            <div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div>
-            <div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div>
-            <div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div><div class="inv-slot"></div>
+            <!-- 5 fixed slots -->
+            <div class="inv-slot"></div>
+            <div class="inv-slot"></div>
+            <div class="inv-slot"></div>
+            <div class="inv-slot"></div>
+            <div class="inv-slot"></div>
           </div>
         </div>
       </div>
     </div>
   </footer>
 
-  <!-- Popup overlay -->
+  <!-- Popup: messages (scroll found / nothing / crafted) -->
   <div id="popup" class="popup hidden">
     <div class="popup-card">
       <div id="popup-text"></div>
     </div>
   </div>
 
-  <!-- Old bottom message not used -->
+  <!-- Popup: durability mini-game -->
+  <div id="durability" class="popup hidden">
+    <div class="dur-card">
+      <div class="dur-title">Fate of the Key</div>
+      <div class="dur-bar">
+        <div class="dur-red"></div>
+        <div class="dur-green"></div>
+        <div class="dur-cursor" id="dur-cursor"></div>
+      </div>
+      <div class="dur-caption" id="dur-caption">Checking durability…</div>
+    </div>
+  </div>
+
+  <!-- Bottom message (unused) -->
   <div id="message" class="toast" style="display:none;"></div>
 
   <script src="script.js"></script>
