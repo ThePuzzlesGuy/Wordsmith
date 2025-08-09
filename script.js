@@ -176,7 +176,7 @@ async function onLockDrop(e, lock) {
   }
 }
 
-/* Lock pick flow (unchanged behavior) */
+/* Lock pick flow */
 async function handleLockPickDrop(lock, keyEl){
   const wantMulti = await confirmChoice(
     "Use the lock pick on multiple locks?",
@@ -505,20 +505,15 @@ function updateProgressUI(){
   document.getElementById('scroll-count').textContent = String(scrolls);
 }
 
-/* NEW: robust loss check
-   You lose a heart if:
-   - No remaining word is possible with the currently ACTIVE letters, AND
-   - You cannot open the scroll lock with your keys (or by combining to a pick) */
+/* Lose a heart if: no remaining word possible with ACTIVE letters AND
+   you cannot open the scroll lock with current/combination inventory. */
 function maybeCheckLose(){
   if (resolvingLoss) return;
 
-  // 1) If any remaining word is still possible with active letters, you can still progress.
   if (isAnyRemainingWordPossible()) return;
-
-  // 2) If you can open the hidden lock now (or by combining), it's not a loss.
   if (canOpenHiddenLock()) return;
 
-  // Otherwise: lose a life and restart SAME board (keep inventory).
+  // Lose a life and restart SAME board (keep inventory).
   resolvingLoss = true;
   lives = Math.max(0, lives - 1);
   updateProgressUI();
@@ -526,14 +521,12 @@ function maybeCheckLose(){
   if (lives === 0) {
     showMessage("Game Over", { sticky:true });
     setTimeout(() => {
-      // reset inventory
       document.getElementById('keys').innerHTML = `
         <div class="inv-slot"></div>
         <div class="inv-slot"></div>
         <div class="inv-slot"></div>
         <div class="inv-slot"></div>
         <div class="inv-slot"></div>`;
-      // reset progress
       lives = 3;
       scrolls = 0;
       updateProgressUI();
@@ -542,20 +535,22 @@ function maybeCheckLose(){
       resolvingLoss = false;
     }, 1200);
   } else {
-    // retry same board
+    // Show your “lost heart” message clearly for ~1.5s, then retry same board
+    showMessage(
+      "Oh no! You've lost a heart.\nNo valid words, or keys remaining.\nThe scroll is now behind a new lock-\ntry and find it before you use all 3 hearts!",
+      { duration: 1500 }
+    );
     setTimeout(() => {
       setupBoard(/*restartSame=*/true);
       resolvingLoss = false;
-    }, 300);
+    }, 1600);
   }
 }
 
-/* Check if any remaining word can be formed from ACTIVE letters.
-   (No adjacency rules in this game → multiset check.) */
+/* Is any remaining word possible from ACTIVE letters? (multiset check) */
 function isAnyRemainingWordPossible(){
   if (remainingWords.length === 0) return false;
 
-  // count active letters on board
   const counts = {};
   document.querySelectorAll('#letter-grid .letter').forEach(t => {
     if (t.dataset.active === "true") {
@@ -564,15 +559,10 @@ function isAnyRemainingWordPossible(){
     }
   });
 
-  // helper to see if word multiset fits within counts
   const canMake = (word) => {
     const need = {};
-    for (const ch of word.toUpperCase()) {
-      need[ch] = (need[ch] || 0) + 1;
-    }
-    for (const k in need) {
-      if (!counts[k] || counts[k] < need[k]) return false;
-    }
+    for (const ch of word.toUpperCase()) need[ch] = (need[ch] || 0) + 1;
+    for (const k in need) if (!counts[k] || counts[k] < need[k]) return false;
     return true;
   };
 
@@ -628,8 +618,13 @@ function showMessage(msg, opts = {}) {
   txt.textContent = msg;
   actions.innerHTML = ""; // no buttons
   popup.classList.remove('hidden');
+
+  const duration = (opts && typeof opts.duration === 'number')
+    ? opts.duration
+    : (opts.sticky ? 2200 : 1600);
+
   clearTimeout(window._popupTimer);
-  window._popupTimer = setTimeout(() => hidePopup(), opts.sticky ? 2200 : 1600);
+  window._popupTimer = setTimeout(() => hidePopup(), duration);
 }
 function hidePopup(){ document.getElementById('popup')?.classList.add('hidden'); }
 
