@@ -1,6 +1,6 @@
 let boards = [];
 let validWords = [];
-let hiddenLockId = null;     // <- specific lock instance id
+let hiddenLockId = null;     // specific lock instance id (not just type)
 let currentPath = [];
 let selectedLetters = [];
 let completedBoards = [];    // session-only rotation
@@ -25,19 +25,21 @@ function setupBoard() {
   const gridEl = document.getElementById("letter-grid");
   gridEl.innerHTML = "";
 
-  // choose an unused board
-  const unusedBoards = boards.filter((_, i) => !completedBoards.includes(i));
-  if (unusedBoards.length === 0) {
-    // optional: tell the user they've finished the set
-    showMessage("You've found the scroll!", { sticky: true });
-    return;
+  // build the pool of available boards
+  let pool = boards.filter((_, i) => !completedBoards.includes(i));
+  if (pool.length === 0) {
+    // finished the set — reset rotation and keep going seamlessly
+    completedBoards = [];
+    pool = boards.slice();
   }
-  const randomIndex = Math.floor(Math.random() * unusedBoards.length);
-  const board = unusedBoards[randomIndex];
+
+  // pick a board from the current pool
+  const randomIndex = Math.floor(Math.random() * pool.length);
+  const board = pool[randomIndex];
   const actualIndex = boards.indexOf(board);
   completedBoards.push(actualIndex);
 
-  // data
+  // board data
   const grid = board.grid;
   validWords = board.words.map(w => w.toUpperCase());
 
@@ -53,7 +55,7 @@ function setupBoard() {
     div.dataset.active = "true";
     div.addEventListener("mousedown", startSelect);
     div.addEventListener("mouseenter", continueSelect);
-    gridEl.appendChild(div);
+    document.getElementById("letter-grid").appendChild(div);
   }
 
   // build dynamic locks based on words (3->wood, 4->stone, 5+->gold)
@@ -136,7 +138,7 @@ function onLockDrop(e, lock) {
       showMessage("Nothing behind this lock...");
     }
   } else {
-    // mismatch: no popup per your preference
+    // mismatch: silent (no popup)
   }
 }
 
@@ -227,6 +229,7 @@ function resetGame() {
     // clear inventory keys BUT KEEP SLOTS
     clearInventoryKeys();
 
+    // load next board (auto-resets rotation if we finished the set)
     setupBoard();
   }, 500);
 }
