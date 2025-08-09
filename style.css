@@ -56,14 +56,14 @@ body{
 .locks-strip{
   background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,.05));
   border-radius:16px; padding:10px 14px; box-shadow: var(--shadow);
-  overflow:hidden; /* avoid tiny overflow while sizing */
+  overflow:hidden;
 }
 .locks{
   display:flex;
   gap: var(--lock-gap);
   justify-content:center;
   align-items:center;
-  flex-wrap: nowrap; /* keep one row */
+  flex-wrap: nowrap; /* one row */
 }
 .lock{
   width: var(--lock-size);
@@ -121,7 +121,6 @@ body{
   -webkit-tap-highlight-color:transparent; touch-action:none;
 }
 .no-select{ user-select:none!important; -webkit-user-select:none!important; }
-/* Prevent ghost-drag on board/locks but NOT keys */
 #letter-grid img, #locks img{ -webkit-user-drag:none; user-drag:none; }
 
 /* ===== Sidebar ===== */
@@ -130,6 +129,22 @@ body{
   background:var(--card); border-radius:16px; padding:14px; box-shadow: var(--shadow);
   border:2px solid rgba(0,0,0,.08);
 }
+
+/* NEW: Progress card */
+.progress-card{
+  display:grid;
+  grid-template-columns: 1fr auto;
+  align-items:center;
+  gap:10px;
+  background:#fff8e8;
+  border-color:#e3cfa6;
+}
+.hearts{ display:flex; gap:8px; }
+.heart{ width:24px; height:24px; object-fit:contain; filter:none; transition:filter .2s, opacity .2s; }
+.heart.lost{ filter:grayscale(1) brightness(.6); opacity:.7; }
+.scrolls{ display:flex; align-items:center; gap:8px; justify-self:end; }
+.scroll-icon{ width:22px; height:22px; object-fit:contain; }
+.scroll-count{ font-weight:900; color:#5a3d1e; }
 
 /* Theme card */
 .theme-card{ display:flex; flex-direction:column; gap:6px; background:#fff8e8; border-color:#e3cfa6; }
