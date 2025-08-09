@@ -18,6 +18,7 @@
   </header>
 
   <main id="app">
+    <!-- Left column -->
     <section class="play-area">
       <!-- Locks row (built dynamically) -->
       <div class="locks-strip">
@@ -32,7 +33,25 @@
       </div>
     </section>
 
-    <!-- Right sidebar -->
+    <!-- Inventory dock: now inside the grid and tied to the left column -->
+    <footer class="inventory-dock">
+      <div id="inventory" class="inventory">
+        <div id="inventory-ui">
+          <div class="inventory-section">
+            <div id="keys" class="key-grid">
+              <!-- 5 fixed slots -->
+              <div class="inv-slot"></div>
+              <div class="inv-slot"></div>
+              <div class="inv-slot"></div>
+              <div class="inv-slot"></div>
+              <div class="inv-slot"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Right column -->
     <aside class="sidebar">
       <div id="theme-card" class="card theme-card">
         <div class="theme-label">Theme</div>
@@ -62,25 +81,7 @@
     </aside>
   </main>
 
-  <!-- Inventory dock -->
-  <footer class="inventory-dock">
-    <div id="inventory" class="inventory">
-      <div id="inventory-ui">
-        <div class="inventory-section">
-          <div id="keys" class="key-grid">
-            <!-- 5 fixed slots -->
-            <div class="inv-slot"></div>
-            <div class="inv-slot"></div>
-            <div class="inv-slot"></div>
-            <div class="inv-slot"></div>
-            <div class="inv-slot"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </footer>
-
-  <!-- Popup: messages (scroll found / nothing / crafted) -->
+  <!-- Popup: messages -->
   <div id="popup" class="popup hidden">
     <div class="popup-card">
       <div id="popup-text"></div>
