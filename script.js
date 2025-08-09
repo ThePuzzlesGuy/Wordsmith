@@ -19,8 +19,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupBoard(/*restartSame=*/false);
   setupDragAndDrop();
 
-  document.getElementById('popup')?.addEventListener('click', (e) => {
-    if (e.target.id === 'popup') hidePopup();
+  // Only allow backdrop click to close when not "locked" (i.e., not a Continue modal)
+  const pop = document.getElementById('popup');
+  pop?.addEventListener('click', (e) => {
+    if (e.target.id === 'popup' && pop.dataset.dismiss !== 'locked') hidePopup();
   });
 
   window.addEventListener('resize', sizeLocksRow);
@@ -535,15 +537,14 @@ function maybeCheckLose(){
       resolvingLoss = false;
     }, 1200);
   } else {
-    // Show your “lost heart” message clearly for ~1.5s, then retry same board
-    showMessage(
+    // Show Continue modal; after click, retry same board
+    showContinue(
       "Oh no! You've lost a heart.\nNo valid words, or keys remaining.\nThe scroll is now behind a new lock-\ntry and find it before you use all 3 hearts!",
-      { duration: 1500 }
-    );
-    setTimeout(() => {
+      "Continue"
+    ).then(() => {
       setupBoard(/*restartSame=*/true);
       resolvingLoss = false;
-    }, 1600);
+    });
   }
 }
 
@@ -617,6 +618,7 @@ function showMessage(msg, opts = {}) {
   if (!popup || !txt || !actions) return;
   txt.textContent = msg;
   actions.innerHTML = ""; // no buttons
+  popup.dataset.dismiss = ""; // allow backdrop close
   popup.classList.remove('hidden');
 
   const duration = (opts && typeof opts.duration === 'number')
@@ -626,6 +628,34 @@ function showMessage(msg, opts = {}) {
   clearTimeout(window._popupTimer);
   window._popupTimer = setTimeout(() => hidePopup(), duration);
 }
+
+function showContinue(message, buttonLabel="Continue"){
+  return new Promise(resolve => {
+    const popup = document.getElementById('popup');
+    const txt = document.getElementById('popup-text');
+    const actions = document.getElementById('popup-actions');
+    if (!popup || !txt || !actions) { resolve(); return; }
+
+    txt.textContent = message;
+    actions.innerHTML = "";
+
+    const btn = document.createElement('button');
+    btn.className = 'btn primary';
+    btn.textContent = buttonLabel;
+
+    btn.addEventListener('click', () => {
+      popup.classList.add('hidden');
+      popup.dataset.dismiss = ""; // unlock backdrop for normal popups
+      resolve();
+    });
+
+    actions.appendChild(btn);
+
+    popup.dataset.dismiss = "locked"; // disable backdrop click-to-close
+    popup.classList.remove('hidden');
+  });
+}
+
 function hidePopup(){ document.getElementById('popup')?.classList.add('hidden'); }
 
 function confirmChoice(message, yesLabel="Yes", noLabel="No"){
@@ -649,6 +679,7 @@ function confirmChoice(message, yesLabel="Yes", noLabel="No"){
     yes.addEventListener('click', () => { popup.classList.add('hidden'); resolve(true); });
     no.addEventListener('click',  () => { popup.classList.add('hidden'); resolve(false); });
 
+    popup.dataset.dismiss = "locked";
     actions.appendChild(yes);
     actions.appendChild(no);
     popup.classList.remove('hidden');
