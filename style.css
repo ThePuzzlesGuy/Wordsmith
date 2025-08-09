@@ -8,6 +8,10 @@
   --accent:#f0b93a;
   --card:#f9f4ea;
   --shadow:0 8px 20px rgba(0,0,0,.18);
+
+  /* Locks sizing (JS updates --lock-size on #locks) */
+  --lock-gap: 18px;
+  --lock-size: 86px; /* default */
 }
 
 *{box-sizing:border-box}
@@ -54,10 +58,17 @@ body{
   border-radius:16px; padding:10px 14px; box-shadow: var(--shadow);
 }
 .locks{
-  display:flex; gap:18px; justify-content:center; align-items:center;
-  flex-wrap: wrap;
+  display:flex;
+  gap: var(--lock-gap);
+  justify-content:center;
+  align-items:center;
+  flex-wrap: nowrap;       /* stay on one line */
 }
-.lock{ width:86px; height:86px; position:relative; }
+.lock{
+  width: var(--lock-size);
+  height: var(--lock-size);
+  position:relative;
+}
 .lock img{ width:100%; height:100%; object-fit:contain; transition:transform .2s; }
 .lock.jiggle img{ animation:jiggle .5s; }
 .lock.failed img{ filter:brightness(.55) }
@@ -153,13 +164,12 @@ body{
 .trash-visual .trash-icon{ font-size:28px; opacity:.55 }
 
 /* ===== Inventory dock ===== */
-/* Placed INSIDE the #app grid, AFTER the sidebar in the DOM, but forced into column 1 so it sits under the board */
 .inventory-dock{
   grid-column: 1 / 2;   /* under the board column */
   margin:16px 0 28px;
   padding:0;
   display:flex;
-  justify-content:center; /* center the shrink-wrapped box under the board */
+  justify-content:center;
 }
 .inventory{
   background:linear-gradient(180deg,#fff8e8,#f6ebcf);
