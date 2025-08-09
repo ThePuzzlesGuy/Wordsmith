@@ -62,7 +62,7 @@
       </div>
     </aside>
 
-    <!-- Inventory dock: now part of the grid, after sidebar so layout doesn't shift -->
+    <!-- Inventory dock: fixed to left column and centered under board -->
     <footer class="inventory-dock">
       <div id="inventory" class="inventory">
         <div id="inventory-ui">
@@ -81,14 +81,15 @@
     </footer>
   </main>
 
-  <!-- Popup: messages -->
+  <!-- Popup: messages + actions -->
   <div id="popup" class="popup hidden">
     <div class="popup-card">
       <div id="popup-text"></div>
+      <div id="popup-actions" class="popup-actions"></div>
     </div>
   </div>
 
-  <!-- Popup: durability mini-game -->
+  <!-- Popup: durability / gamble bar -->
   <div id="durability" class="popup hidden">
     <div class="dur-card">
       <div class="dur-title">Fate of the Key</div>
