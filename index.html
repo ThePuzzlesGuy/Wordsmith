@@ -33,24 +33,6 @@
       </div>
     </section>
 
-    <!-- Inventory dock: now inside the grid and tied to the left column -->
-    <footer class="inventory-dock">
-      <div id="inventory" class="inventory">
-        <div id="inventory-ui">
-          <div class="inventory-section">
-            <div id="keys" class="key-grid">
-              <!-- 5 fixed slots -->
-              <div class="inv-slot"></div>
-              <div class="inv-slot"></div>
-              <div class="inv-slot"></div>
-              <div class="inv-slot"></div>
-              <div class="inv-slot"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </footer>
-
     <!-- Right column -->
     <aside class="sidebar">
       <div id="theme-card" class="card theme-card">
@@ -79,6 +61,24 @@
         </div>
       </div>
     </aside>
+
+    <!-- Inventory dock: now part of the grid, after sidebar so layout doesn't shift -->
+    <footer class="inventory-dock">
+      <div id="inventory" class="inventory">
+        <div id="inventory-ui">
+          <div class="inventory-section">
+            <div id="keys" class="key-grid">
+              <!-- 5 fixed slots -->
+              <div class="inv-slot"></div>
+              <div class="inv-slot"></div>
+              <div class="inv-slot"></div>
+              <div class="inv-slot"></div>
+              <div class="inv-slot"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
   </main>
 
   <!-- Popup: messages -->
