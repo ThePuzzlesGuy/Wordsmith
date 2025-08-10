@@ -428,6 +428,11 @@ function checkCombinerKeys() {
   slotA.classList.remove('has-key');
   slotB.classList.remove('has-key');
 
+  // Rune Forge fuse pulse + spark
+  const comb = document.getElementById('combiner');
+  comb?.classList.add('forge-fuse');
+  setTimeout(() => comb?.classList.remove('forge-fuse'), 900);
+
   if (result === 'pick') {
     spawnKey('pick');
     showMessage(`You've successfully crafted a Lock Pick!`);
@@ -618,11 +623,15 @@ function clearPopupTimer(){
 
 function showMessage(msg, opts = {}) {
   const popup = document.getElementById('popup');
+  if (!popup) return;
+
+  // If a modal (Continue/Confirm) is up, don't stomp it.
+  if (popup.dataset.dismiss === 'locked') return;
+
   const txt = document.getElementById('popup-text');
   const actions = document.getElementById('popup-actions');
-  if (!popup || !txt || !actions) return;
 
-  clearPopupTimer();                // ← clear any old timer
+  clearPopupTimer();
   txt.textContent = msg;
   actions.innerHTML = "";           // no buttons
   popup.dataset.dismiss = "";       // allow backdrop close
@@ -642,7 +651,7 @@ function showContinue(message, buttonLabel="Continue"){
     const actions = document.getElementById('popup-actions');
     if (!popup || !txt || !actions) { resolve(); return; }
 
-    clearPopupTimer();              // ← kill any previous auto-hide
+    clearPopupTimer();              // kill any previous auto-hide
     txt.textContent = message;
     actions.innerHTML = "";
 
@@ -664,9 +673,12 @@ function showContinue(message, buttonLabel="Continue"){
 }
 
 function hidePopup(){
-  clearPopupTimer();                // ← ensure no stray timers fire later
   const p = document.getElementById('popup');
-  if (p) p.classList.add('hidden');
+  if (!p) return;
+  // Don’t hide if a modal is locked open
+  if (p.dataset.dismiss === 'locked') return;
+  clearPopupTimer();
+  p.classList.add('hidden');
 }
 
 function confirmChoice(message, yesLabel="Yes", noLabel="No"){
@@ -676,7 +688,7 @@ function confirmChoice(message, yesLabel="Yes", noLabel="No"){
     const actions = document.getElementById('popup-actions');
     if (!popup || !txt || !actions) { resolve(false); return; }
 
-    clearPopupTimer();              // ← no auto-hide during choice
+    clearPopupTimer();              // no auto-hide during choice
     txt.textContent = message;
     actions.innerHTML = "";
 
