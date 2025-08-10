@@ -160,31 +160,56 @@ body{
 .dur-cursor{ position:absolute; top:-6px; width:24px; height:38px; border-radius:6px; background:#fff; border:2px solid #a97b2a; box-shadow:0 4px 10px rgba(0,0,0,.2); left:0; transform:translateX(-50%); }
 .dur-caption{ font-weight:700; color:#5a3d1e; }
 
-/* ===== Prize Wheel ===== */
-.wheel-card{ min-width:360px; max-width:88vw; background:#fffdf4; border:2px solid #ead8b3; border-radius:16px; box-shadow:0 12px 30px rgba(0,0,0,.25); padding:16px 18px; text-align:center; }
-.wheel-box{ position:relative; width:280px; height:280px; margin:0 auto 12px; }
+/* ===== Prize Wheel (redesigned) ===== */
+.wheel-card{
+  min-width:380px; max-width:88vw;
+  background:#fffdf4; border:2px solid #ead8b3; border-radius:16px;
+  box-shadow:0 12px 30px rgba(0,0,0,.25); padding:16px 18px; text-align:center;
+}
+.wheel-box{ position:relative; width:300px; height:300px; margin:0 auto 14px; }
 .wheel-dial{
-  position:absolute; inset:0; border-radius:50%; border:6px solid #e5d3a8;
-  box-shadow: inset 0 6px 18px rgba(0,0,0,.12), 0 8px 20px rgba(0,0,0,.15);
+  position:absolute; inset:0; border-radius:50%;
+  border:8px solid #e5d3a8;
+  background:#f6f0dc;
+  box-shadow: inset 0 8px 20px rgba(0,0,0,.12), 0 10px 22px rgba(0,0,0,.15);
   transform:rotate(0deg);
   transition: transform 3.2s cubic-bezier(.17,.85,.2,1);
 }
+/* dividers + inner hub */
+.wheel-dial::before{
+  content:""; position:absolute; inset:0; border-radius:50%;
+  background: repeating-conic-gradient(
+    rgba(255,255,255,.22) 0deg,
+    rgba(255,255,255,.22) 2deg,
+    transparent 2deg,
+    transparent 45deg
+  );
+  pointer-events:none;
+}
+.wheel-dial::after{
+  content:""; position:absolute; top:50%; left:50%;
+  width:28px; height:28px; transform:translate(-50%,-50%);
+  border-radius:50%; background: radial-gradient(circle at 30% 30%, #fff8e4, #eed6a8);
+  border:3px solid #d3bb84; box-shadow: inset 0 2px 6px rgba(0,0,0,.22);
+  pointer-events:none;
+}
 .wheel-dial .wheel-icon{
   position:absolute; top:50%; left:50%;
-  width:36px; height:36px; display:flex; align-items:center; justify-content:center;
+  width:40px; height:40px; display:flex; align-items:center; justify-content:center;
   transform:translate(-50%,-50%);
 }
 .wheel-dial .wheel-icon img{ width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 1px 1px rgba(0,0,0,.2)); }
 .wheel-dial .wheel-icon.badge{
-  width:30px; height:30px; border-radius:50%; background:#ef6a6a; border:2px solid #b74646;
-  color:#fff; font-weight:900; font-size:14px; box-shadow:0 1px 4px rgba(0,0,0,.25);
+  width:34px; height:34px; border-radius:50%; background:#ef6a6a; border:2px solid #b74646;
+  color:#fff; font-weight:900; font-size:16px; box-shadow:0 1px 4px rgba(0,0,0,.25);
 }
-/* BIGGER pointer, pointing DOWN from the top */
+
+/* Bigger pointer, clearly pointing DOWN from the top rim */
 .wheel-pointer{
-  position:absolute; top:-8px; left:50%; transform:translateX(-50%);
+  position:absolute; top:-2px; left:50%; transform:translateX(-50%);
   width:0; height:0;
-  border-left:18px solid transparent; border-right:18px solid transparent;
-  border-bottom:30px solid #d49a2e; /* points DOWN */
+  border-left:20px solid transparent; border-right:20px solid transparent;
+  border-bottom:36px solid #d49a2e; /* points DOWN */
   filter:drop-shadow(0 2px 2px rgba(0,0,0,.25));
 }
 .wheel-actions{ margin-top:6px; }
