@@ -15,7 +15,7 @@ let isSelecting = false;
 
 let prizeTileIndex = null;
 
-/* Prize wheel segments (order chosen to spread loses) */
+/* Equal visual slices; weights still apply for outcome */
 const WHEEL_SEGMENTS = [
   { id:'wood',  label:'Wood Key',     weight:28, color:'#e6c27a', icon:'sprites/key_wood.png' },
   { id:'lose',  label:'Lose a Key',   weight: 2, color:'#ffb0b0', icon:null },
@@ -189,7 +189,7 @@ async function onLockDrop(e, lock) {
   }
 }
 
-/* lockpick flow unchanged */
+/* Lock pick flow unchanged */
 async function handleLockPickDrop(lock, keyEl){
   const wantMulti = await confirmChoice(
     "Use the lock pick on multiple locks?",
@@ -293,11 +293,7 @@ function endSelect() {
       const usedPrize = currentPath.some(el => Number(el.dataset.index) === Number(prizeTileIndex));
       markUsedTiles(currentPath);
 
-      if (usedPrize) {
-        prizeTileIndex = null;
-        // defer to next microtask so overlays never clash
-        setTimeout(openPrizeWheel, 0);
-      }
+      if (usedPrize) { prizeTileIndex = null; setTimeout(openPrizeWheel, 0); }
     } else {
       invalidWordFeedback(currentPath);
     }
@@ -313,18 +309,11 @@ function endSelect() {
   maybeCheckLose();
 }
 
-function markUsedTiles(tiles) {
-  tiles.forEach(el => { el.dataset.active = "false"; el.classList.add("used"); });
-}
-function invalidWordFeedback(tiles) {
-  tiles.forEach(el => { el.classList.add("invalid"); setTimeout(() => el.classList.remove("invalid"), 400); });
-}
+function markUsedTiles(tiles) { tiles.forEach(el => { el.dataset.active = "false"; el.classList.add("used"); }); }
+function invalidWordFeedback(tiles) { tiles.forEach(el => { el.classList.add("invalid"); setTimeout(() => el.classList.remove("invalid"), 400); }); }
 
 /* ========== KEYS / INVENTORY / SMITHING ========== */
-function giveKey(len) {
-  const type = len === 3 ? 'wood' : len === 4 ? 'stone' : 'gold';
-  spawnKey(type);
-}
+function giveKey(len) { const type = len === 3 ? 'wood' : len === 4 ? 'stone' : 'gold'; spawnKey(type); }
 
 function spawnKey(type){
   const inv = document.getElementById("inventory");
@@ -492,7 +481,7 @@ function doCombine(){
   maybeCheckLose();
 }
 
-/* ========== Durability/Gamble (unchanged) ========== */
+/* ========== Durability/Gamble ========== */
 function runDurabilityCheck(keyType){
   return new Promise(resolve => {
     if (keyType === 'pick') { resolve(true); return; }
@@ -540,7 +529,7 @@ function showGambleBar(successChance, resolve){
   }, 1200);
 }
 
-/* ========== Lose conditions ========== */
+/* ========== PROGRESSION & FAIL STATE ========== */
 function updateProgressUI(){
   const heartEls = Array.from(document.querySelectorAll('#hearts .heart'));
   heartEls.forEach((el, i) => el.classList.toggle('lost', i >= lives));
@@ -561,8 +550,8 @@ function maybeCheckLose(){
     setTimeout(() => {
       document.getElementById('keys').innerHTML = `
         <div class="inv-slot"></div>
-        <div class="inv-slot"></div
-        ><div class="inv-slot"></div>
+        <div class="inv-slot"></div>
+        <div class="inv-slot"></div>
         <div class="inv-slot"></div>
         <div class="inv-slot"></div>`;
       lives = 3; scrolls = 0; updateProgressUI(); setupBoard(false); setupDragAndDrop(); resolvingLoss = false;
@@ -628,7 +617,7 @@ function getHiddenLockType(){
   return el?.dataset.type || null;
 }
 
-/* ========== Popups utils ========== */
+/* ========== POPUPS & UTILS ========== */
 function clearPopupTimer(){ if (window._popupTimer){ clearTimeout(window._popupTimer); window._popupTimer = null; } }
 function showMessage(msg, opts = {}) {
   const popup = document.getElementById('popup'); if (!popup) return;
@@ -673,7 +662,6 @@ function shuffle(arr){ for (let i = arr.length - 1; i > 0; i--) { const j = Math
 function markPrizeTile(){
   const tiles = Array.from(document.querySelectorAll('#letter-grid .letter'));
   if (tiles.length === 0) return;
-  // remove any stale star if we re-entered the same board instance
   tiles.forEach(t => t.classList.remove('prize'));
   prizeTileIndex = Math.floor(Math.random()*tiles.length);
   tiles[prizeTileIndex].classList.add('prize');
@@ -681,16 +669,15 @@ function markPrizeTile(){
 
 function buildWheelVisual(){
   const dial  = document.getElementById('wheel-dial');
-  const cap   = document.getElementById('wheel-caption');
   const spin  = document.getElementById('wheel-spin');
-  if (!dial || !cap || !spin) return;
+  if (!dial || !spin) return;
 
-  // gradient
-  let total = WHEEL_SEGMENTS.reduce((a,s)=>a+s.weight,0);
-  let acc = 0;
-  const stops = WHEEL_SEGMENTS.map(seg => {
-    const start = acc / total * 100; acc += seg.weight;
-    const end = acc / total * 100;
+  // Equal visual slices
+  const N = WHEEL_SEGMENTS.length;
+  const pct = 100 / N;
+  const stops = WHEEL_SEGMENTS.map((seg, i) => {
+    const start = i * pct;
+    const end   = (i + 1) * pct;
     return `${seg.color} ${start}% ${end}%`;
   }).join(', ');
   dial.style.background = `conic-gradient(${stops})`;
@@ -698,14 +685,12 @@ function buildWheelVisual(){
   // clear previous icons
   dial.querySelectorAll('.wheel-icon').forEach(n => n.remove());
 
-  // place icons at segment centers (they rotate with the dial)
-  let cum = 0;
+  // place icons at slice centers
+  const base = 360 / N;
   const radius = 92; // px from center
-  for (const seg of WHEEL_SEGMENTS){
-    const start = (cum/total)*360;
-    const span  = (seg.weight/total)*360;
-    cum += seg.weight;
-    const center = start + span/2;
+  for (let i=0;i<N;i++){
+    const seg = WHEEL_SEGMENTS[i];
+    const center = i * base + base/2;
 
     const el = document.createElement('div');
     el.className = seg.id === 'lose' ? 'wheel-icon badge' : 'wheel-icon';
@@ -721,9 +706,8 @@ function buildWheelVisual(){
     dial.appendChild(el);
   }
 
-  // reset dial + UI
+  // reset dial + enable button
   dial.style.transform = 'rotate(0deg)';
-  cap.textContent = 'Spin to win';
   spin.disabled = false;
 }
 
@@ -735,19 +719,17 @@ function openPrizeWheel(){
   buildWheelVisual();
   wheel.classList.remove('hidden');
 
-  // attach one-time spin handler
   spin.onclick = async () => {
     spin.disabled = true;
-    await spinWheel(); // do the animation + outcome
+    await spinWheel();
   };
 }
 
 function spinWheel(){
   return new Promise(resolve => {
     const dial  = document.getElementById('wheel-dial');
-    const cap   = document.getElementById('wheel-caption');
     const wheel = document.getElementById('wheel');
-    if (!dial || !cap || !wheel) { resolve(); return; }
+    if (!dial || !wheel) { resolve(); return; }
 
     const total = WHEEL_SEGMENTS.reduce((a,s)=>a+s.weight,0);
 
@@ -757,29 +739,23 @@ function spinWheel(){
     for (let i=0;i<WHEEL_SEGMENTS.length;i++){ sum += WHEEL_SEGMENTS[i].weight; if (r < sum){ chosenIndex = i; break; } }
     const chosen = WHEEL_SEGMENTS[chosenIndex];
 
-    // angle to stop on center of chosen segment
-    let cum = 0;
-    for (let i=0;i<chosenIndex;i++) cum += WHEEL_SEGMENTS[i].weight;
-    const segStart = (cum/total) * 360;
-    const segSpan  = (chosen.weight/total) * 360;
-    const segCenter= segStart + segSpan/2;
+    // center angle for equal slices
+    const N = WHEEL_SEGMENTS.length;
+    const base = 360 / N;
+    const center = chosenIndex * base + base/2;
 
     const spins = 4 + Math.floor(Math.random()*3);
-    const target = spins*360 + (360 - segCenter);
+    const target = spins*360 + (360 - center);
 
-    cap.textContent = "Spinning…";
     // trigger transition
     void dial.offsetWidth;
     dial.style.transform = `rotate(${target}deg)`;
 
     setTimeout(async () => {
-      cap.textContent = chosen.label;
-      setTimeout(async () => {
-        wheel.classList.add('hidden');
-        await applyWheelOutcome(chosen.id);
-        maybeCheckLose();
-        resolve();
-      }, 600);
+      wheel.classList.add('hidden');
+      await applyWheelOutcome(chosen.id);
+      maybeCheckLose();
+      resolve();
     }, 3400);
   });
 }
