@@ -25,21 +25,14 @@ const PRIZES = {
   solve: { id:'solve', label:'Reveal Scroll',  color:'#7ED4A6', icon:'sprites/scroll.png',     weight: 3 },
 };
 
-/* VISUAL order is 8 equal slices. We will also *pick by slice* using per-slice weight,
-   so the backend odds match your requested percentages. */
+/* Equal visual slices (8). We’ll also *pick by slice* using per-slice weight. */
 const WHEEL_ORDER = ['wood','lose','stone','solve','gold','lose','pick','lose'];
 
-/* Build slices: each item carries its own color, icon AND weight.
-   Each "lose" slice is 2% (3×2% = 6%). Others keep their full weights. */
+/* Each slice carries its own colour, icon, and weight.
+   Each “lose” slice is 2% (three of them = 6% total). */
 const SLICES = WHEEL_ORDER.map(id => {
   const p = PRIZES[id];
-  return {
-    id,
-    label: p.label,
-    color: p.color,
-    icon:  p.icon,
-    weight: id === 'lose' ? 2 : p.weight
-  };
+  return { id, label:p.label, color:p.color, icon:p.icon, weight: id==='lose' ? 2 : p.weight };
 });
 const TOTAL_SLICE_WEIGHT = SLICES.reduce((a,s)=>a+s.weight,0);
 
@@ -733,26 +726,21 @@ function buildWheelVisual(){
   const spin  = document.getElementById('wheel-spin');
   if (!dial || !spin) return;
 
-  const N = SLICES.length;                 // 8
-  const base = 360 / N;                    // 45°
+  const N = SLICES.length;           // 8
+  const base = 360 / N;              // 45°
   const pct  = 100 / N;
 
-  // Gradient: start from RIGHT (0deg). Each slice is equal size.
+  // Draw gradient measured from TOP (−90°) so our baseline matches the pointer.
   const stops = SLICES.map((seg, i) => `${seg.color} ${i*pct}% ${(i+1)*pct}%`).join(', ');
-  dial.style.background = `conic-gradient(from 0deg, ${stops})`;
+  dial.style.background = `conic-gradient(from -90deg, ${stops})`;
 
-  // Clear old icons and lay new ones at slice centres.
+  // Clear old icons and place new ones at slice centres, also measured from TOP.
   dial.querySelectorAll('.wheel-icon').forEach(n => n.remove());
-
   const radius = 92;
-  const ICON_ANGLE_OFFSET = 90; // <<— fix: icons were 90° behind the gradient
 
   for (let i=0;i<N;i++){
     const seg = SLICES[i];
-    // centre measured from RIGHT to match gradient
-    const centerFromRight = i*base + base/2;
-    // shift icons +90° so they line up with slice colours
-    const cssAngle = centerFromRight + ICON_ANGLE_OFFSET;
+    const centerFromTop = i*base + base/2;   // 0° = top, clockwise positive
 
     const icon = document.createElement('div');
     icon.className = seg.id === 'lose' ? 'wheel-icon badge' : 'wheel-icon';
@@ -764,9 +752,8 @@ function buildWheelVisual(){
       img.alt = seg.label;
       icon.appendChild(img);
     }
-
     icon.style.transform =
-      `translate(-50%,-50%) rotate(${cssAngle}deg) translate(${radius}px) rotate(${-cssAngle}deg)`;
+      `translate(-50%,-50%) rotate(${centerFromTop}deg) translate(${radius}px) rotate(${-centerFromTop}deg)`;
     dial.appendChild(icon);
   }
 
@@ -788,7 +775,7 @@ function openPrizeWheel(){
   };
 }
 
-/* Pick a *slice* by weight, then rotate so its centre is under the pointer. */
+/* Pick a *slice* by weight, then rotate so its centre is at TOP under the pointer. */
 function spinWheel(){
   return new Promise(resolve => {
     const dial  = document.getElementById('wheel-dial');
@@ -804,13 +791,13 @@ function spinWheel(){
     }
     const outcomeId = SLICES[chosenIndex].id;
 
-    // Our gradient/icons start from RIGHT (0deg).
-    // Pointer is at TOP (90deg). Move chosen centre to 90deg.
-    const N = SLICES.length;        // 8
-    const base = 360 / N;           // 45°
-    const centerFromRight = chosenIndex*base + base/2;
+    // Our gradient & icons are measured from TOP; pointer is at TOP.
+    // Move the chosen slice centre to TOP (0°).
+    const N = SLICES.length;
+    const base = 360 / N;
+    const centerFromTop = chosenIndex*base + base/2;
     const spins = 4 + Math.floor(Math.random()*3); // 4–6 full spins
-    const target = spins*360 + (90 - centerFromRight);
+    const target = spins*360 - centerFromTop;
 
     void dial.offsetWidth;          // reflow to restart transition
     dial.style.transform = `rotate(${target}deg)`;
