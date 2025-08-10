@@ -7,29 +7,24 @@ let selectedLetters = [];
 let completedBoards = [];
 let currentBoard = null;
 
-// Progress
 let lives = 3;
 let scrolls = 0;
 
-// guards
 let resolvingLoss = false;
-
-// NEW: robust selection state (fixes “dragging does nothing”)
 let isSelecting = false;
 
-// NEW: prize tile index per board
 let prizeTileIndex = null;
 
-/* Prize wheel segments + weights (sum = 100) */
+/* Prize wheel segments (order chosen to spread loses) */
 const WHEEL_SEGMENTS = [
-  { id:'wood',  label:'Wood Key',     weight:28, color:'#e6c27a' },
-  { id:'stone', label:'Stone Key',    weight:28, color:'#c8c7c9' },
-  { id:'gold',  label:'Gold Key',     weight:23, color:'#ffd35f' },
-  { id:'pick',  label:'Lock Pick',    weight:12, color:'#f3a6a6' },
-  { id:'lose',  label:'Lose a Key',   weight: 2, color:'#ffb0b0' },
-  { id:'lose',  label:'Lose a Key',   weight: 2, color:'#ffb0b0' },
-  { id:'lose',  label:'Lose a Key',   weight: 2, color:'#ffb0b0' },
-  { id:'solve', label:'Reveal Scroll',weight: 3, color:'#91e4c5' },
+  { id:'wood',  label:'Wood Key',     weight:28, color:'#e6c27a', icon:'sprites/key_wood.png' },
+  { id:'lose',  label:'Lose a Key',   weight: 2, color:'#ffb0b0', icon:null },
+  { id:'stone', label:'Stone Key',    weight:28, color:'#c8c7c9', icon:'sprites/key_stone.png' },
+  { id:'solve', label:'Reveal Scroll',weight: 3, color:'#91e4c5', icon:'sprites/scroll.png' },
+  { id:'gold',  label:'Gold Key',     weight:23, color:'#ffd35f', icon:'sprites/key_gold.png' },
+  { id:'lose',  label:'Lose a Key',   weight: 2, color:'#ffb0b0', icon:null },
+  { id:'pick',  label:'Lock Pick',    weight:12, color:'#f3a6a6', icon:'sprites/key_pick.png' },
+  { id:'lose',  label:'Lose a Key',   weight: 2, color:'#ffb0b0', icon:null },
 ];
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -37,7 +32,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupBoard(false);
   setupDragAndDrop();
 
-  // backdrop closes only when not locked
   const pop = document.getElementById('popup');
   pop?.addEventListener('click', (e) => {
     if (e.target.id === 'popup' && pop.dataset.dismiss !== 'locked') hidePopup();
@@ -46,7 +40,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.addEventListener('resize', sizeLocksRow);
   updateProgressUI();
 
-  // EXTRA: ensure endSelect always fires across browsers
   ['mouseup','pointerup','touchend'].forEach(ev =>
     document.addEventListener(ev, endSelect)
   );
@@ -62,7 +55,6 @@ function setupBoard(restartSame=false) {
   resolvingLoss = false;
 
   if (!restartSame) {
-    // new round → mark keys as carried
     document.querySelectorAll('#keys .key').forEach(k => {
       k.dataset.carried = "true";
       k.classList.add('carried');
@@ -94,7 +86,7 @@ function setupBoard(restartSame=false) {
     div.dataset.index = i;
     div.dataset.active = "true";
     div.addEventListener("mousedown", startSelect);
-    div.addEventListener("pointerdown", startSelect);   // ← pointer support
+    div.addEventListener("pointerdown", startSelect);
     div.addEventListener("mouseenter", continueSelect);
     div.addEventListener("pointerenter", continueSelect);
     gridEl.appendChild(div);
@@ -105,16 +97,14 @@ function setupBoard(restartSame=false) {
 }
 
 function buildDynamicLocks(words) {
-  const locksWrap = document.getElementById('locks');
-  locksWrap.innerHTML = "";
+  const wrap = document.getElementById('locks');
+  wrap.innerHTML = "";
 
   let wood = 0, stone = 0, gold = 0;
   for (const w of words) {
     const L = w.trim().length;
     if (!L) continue;
-    if (L === 3) wood++;
-    else if (L === 4) stone++;
-    else gold++;
+    if (L === 3) wood++; else if (L === 4) stone++; else gold++;
   }
 
   const lockTypes = [
@@ -132,17 +122,15 @@ function buildDynamicLocks(words) {
     lock.dataset.type = type;
     lock.dataset.id = String(i);
     lock.innerHTML = `<img src="sprites/lock_${type}.png" alt="">`;
-
     lock.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
     lock.addEventListener("drop", e => onLockDrop(e, lock));
-
-    locksWrap.appendChild(lock);
+    wrap.appendChild(lock);
   });
 
-  sizeLocksRow(); // ensure correct size on init
+  sizeLocksRow();
 }
 
-/* Keep one-row locks; shrink for 8+ (restores previous behaviour) */
+/* shrink locks when >7, board stays same size */
 function sizeLocksRow() {
   const wrap = document.getElementById('locks');
   if (!wrap) return;
@@ -160,7 +148,6 @@ function sizeLocksRow() {
     size = Math.max(MIN, Math.min(BASE, size));
   }
 
-  // Set on row AND :root so children reliably read it
   wrap.style.setProperty('--lock-size', `${size}px`);
   document.documentElement.style.setProperty('--lock-size', `${size}px`);
 }
@@ -202,7 +189,7 @@ async function onLockDrop(e, lock) {
   }
 }
 
-/* Lock pick flow (unchanged) */
+/* lockpick flow unchanged */
 async function handleLockPickDrop(lock, keyEl){
   const wantMulti = await confirmChoice(
     "Use the lock pick on multiple locks?",
@@ -210,18 +197,10 @@ async function handleLockPickDrop(lock, keyEl){
     "No, just this lock"
   );
 
-  if (!wantMulti) {
-    keyEl.remove();
-    openLockSimple(lock, /*announce*/true);
-    return;
-  }
+  if (!wantMulti) { keyEl.remove(); openLockSimple(lock, true); return; }
 
   const ok50 = await runGamble(0.5);
-  if (!ok50) {
-    keyEl.remove();
-    showMessage("Lock picking unsuccessful");
-    return;
-  }
+  if (!ok50) { keyEl.remove(); showMessage("Lock picking unsuccessful"); return; }
 
   const tryThree = await confirmChoice(
     "Key is good for 2 uses. Try for 3 uses?",
@@ -229,34 +208,20 @@ async function handleLockPickDrop(lock, keyEl){
     "No, take 2"
   );
 
-  if (!tryThree) {
-    keyEl.remove();
-    openLockSimple(lock, /*announce*/true);
-    openRandomWrong(1, [Number(lock.dataset.id)]);
-    return;
-  }
+  if (!tryThree) { keyEl.remove(); openLockSimple(lock, true); openRandomWrong(1, [Number(lock.dataset.id)]); return; }
 
   const ok25 = await runGamble(0.25);
-  if (!ok25) {
-    keyEl.remove();
-    showMessage("Lock picking unsuccessful");
-    return;
-  }
+  if (!ok25) { keyEl.remove(); showMessage("Lock picking unsuccessful"); return; }
 
   keyEl.remove();
-  openLockSimple(lock, /*announce*/true);
+  openLockSimple(lock, true);
   openRandomWrong(2, [Number(lock.dataset.id)]);
 }
 
 function openLockSimple(lock, announce){
   const isScrollHere = Number(lock.dataset.id) === Number(hiddenLockId);
-  if (isScrollHere) {
-    revealScroll(lock);
-  } else {
-    lock.classList.add("failed");
-    if (announce) showMessage("Nothing behind this lock...");
-    maybeCheckLose();
-  }
+  if (isScrollHere) revealScroll(lock);
+  else { lock.classList.add("failed"); if (announce) showMessage("Nothing behind this lock..."); maybeCheckLose(); }
 }
 
 function openRandomWrong(n, excludeIds = []) {
@@ -275,7 +240,6 @@ function openRandomWrong(n, excludeIds = []) {
 function revealScroll(lock){
   scrolls += 1;
   updateProgressUI();
-
   showMessage("You've found the scroll!");
   const scroll = document.createElement("img");
   scroll.src = "sprites/scroll.png";
@@ -291,8 +255,6 @@ function revealScroll(lock){
 function startSelect(e) {
   if (e.target.dataset.active !== "true") return;
   e.preventDefault();
-
-  // Failsafe: if you start solving again, recall smith keys to inventory.
   recallForgeKeysToInventory();
 
   isSelecting = true;
@@ -317,7 +279,7 @@ function continueSelect(e) {
 }
 
 function endSelect() {
-  if (!isSelecting) return; // nothing to finalize
+  if (!isSelecting) return;
   isSelecting = false;
 
   const word = selectedLetters.join("");
@@ -328,13 +290,9 @@ function endSelect() {
       remainingWords.splice(idx, 1);
       giveKey(word.length);
 
-      // PRIZE: did this word use the prize tile?
       const usedPrize = currentPath.some(el => Number(el.dataset.index) === Number(prizeTileIndex));
       markUsedTiles(currentPath);
-      if (usedPrize) {
-        prizeTileIndex = null;
-        openPrizeWheel();
-      }
+      if (usedPrize) { prizeTileIndex = null; openPrizeWheel(); }
     } else {
       invalidWordFeedback(currentPath);
     }
@@ -351,20 +309,13 @@ function endSelect() {
 }
 
 function markUsedTiles(tiles) {
-  tiles.forEach(el => {
-    el.dataset.active = "false";
-    el.classList.add("used");
-  });
+  tiles.forEach(el => { el.dataset.active = "false"; el.classList.add("used"); });
 }
-
 function invalidWordFeedback(tiles) {
-  tiles.forEach(el => {
-    el.classList.add("invalid");
-    setTimeout(() => el.classList.remove("invalid"), 400);
-  });
+  tiles.forEach(el => { el.classList.add("invalid"); setTimeout(() => el.classList.remove("invalid"), 400); });
 }
 
-/* ========== KEYS, INVENTORY, SMITHING ========== */
+/* ========== KEYS / INVENTORY / SMITHING ========== */
 function giveKey(len) {
   const type = len === 3 ? 'wood' : len === 4 ? 'stone' : 'gold';
   spawnKey(type);
@@ -375,11 +326,7 @@ function spawnKey(type){
   const keyGrid = document.getElementById("keys");
 
   const emptySlot = Array.from(keyGrid.querySelectorAll('.inv-slot')).find(s => !s.querySelector('.key'));
-  if (!emptySlot) {
-    inv.classList.add('full');
-    setTimeout(() => inv.classList.remove('full'), 320);
-    return;
-  }
+  if (!emptySlot) { inv.classList.add('full'); setTimeout(() => inv.classList.remove('full'), 320); return; }
 
   const img = document.createElement("img");
   img.src = `sprites/key_${type}.png`;
@@ -404,10 +351,7 @@ function spawnKey(type){
 function resetGame() {
   const grid = document.getElementById("letter-grid");
   grid.style.opacity = 0;
-  setTimeout(() => {
-    grid.style.opacity = 1;
-    setupBoard(false);
-  }, 400);
+  setTimeout(() => { grid.style.opacity = 1; setupBoard(false); }, 400);
 }
 
 function setupDragAndDrop() {
@@ -459,7 +403,6 @@ function setupDragAndDrop() {
     maybeCheckLose();
   });
 
-  // Manual forge w/ confirmation
   forgeBtn.addEventListener('click', async () => {
     const { a:sa, b:sb } = getCombinerSlots();
     const k1 = sa.querySelector('.key');
@@ -468,7 +411,6 @@ function setupDragAndDrop() {
 
     const result = nextTier(k1.dataset.type);
     const label = result === 'pick' ? 'Lock Pick' : (result[0].toUpperCase() + result.slice(1) + ' key');
-
     const ok = await confirmChoice(`Forge these two keys into a ${label}?`, "Forge", "Cancel");
     if (!ok) return;
 
@@ -504,8 +446,7 @@ function updateForgeButton(){
   const { a, b } = getCombinerSlots();
   const k1 = a.querySelector('.key');
   const k2 = b.querySelector('.key');
-  const ready = !!(k1 && k2 && k1.dataset.type === k2.dataset.type);
-  forgeBtn.disabled = !ready;
+  forgeBtn.disabled = !(k1 && k2 && k1.dataset.type === k2.dataset.type);
 }
 
 function nextTier(type){
@@ -539,20 +480,14 @@ function doCombine(){
   smith.classList.add('strike');
   setTimeout(() => smith.classList.remove('strike'), 600);
 
-  if (result === 'pick') {
-    spawnKey('pick');
-    showMessage(`You've successfully crafted a Lock Pick!`);
-  } else {
-    spawnKey(result);
-    const label = result.charAt(0).toUpperCase() + result.slice(1);
-    showMessage(`You've successfully crafted a ${label} key!`);
-  }
+  if (result === 'pick') { spawnKey('pick'); showMessage(`You've successfully crafted a Lock Pick!`); }
+  else { spawnKey(result); const label = result.charAt(0).toUpperCase() + result.slice(1); showMessage(`You've successfully crafted a ${label} key!`); }
 
   updateForgeButton();
   maybeCheckLose();
 }
 
-/* ========== DURABILITY & GAMBLE ========== */
+/* ========== Durability/Gamble (unchanged) ========== */
 function runDurabilityCheck(keyType){
   return new Promise(resolve => {
     if (keyType === 'pick') { resolve(true); return; }
@@ -563,7 +498,6 @@ function runDurabilityCheck(keyType){
 function runGamble(successChance){ return new Promise(resolve => { showGambleBar(successChance, resolve); }); }
 function showGambleBar(successChance, resolve){
   const breakOdds = 1 - successChance;
-
   const dur = document.getElementById('durability');
   const cursor = document.getElementById('dur-cursor');
   const caption = document.getElementById('dur-caption');
@@ -601,7 +535,7 @@ function showGambleBar(successChance, resolve){
   }, 1200);
 }
 
-/* ========== PROGRESSION & FAIL STATE ========== */
+/* ========== Lose conditions ========== */
 function updateProgressUI(){
   const heartEls = Array.from(document.querySelectorAll('#hearts .heart'));
   heartEls.forEach((el, i) => el.classList.toggle('lost', i >= lives));
@@ -610,11 +544,9 @@ function updateProgressUI(){
 
 function maybeCheckLose(){
   if (resolvingLoss) return;
-
   if (isAnyRemainingWordPossible()) return;
   if (canOpenHiddenLock()) return;
 
-  // Lose a life and restart SAME board (keep inventory).
   resolvingLoss = true;
   lives = Math.max(0, lives - 1);
   updateProgressUI();
@@ -624,31 +556,22 @@ function maybeCheckLose(){
     setTimeout(() => {
       document.getElementById('keys').innerHTML = `
         <div class="inv-slot"></div>
-        <div class="inv-slot"></div>
-        <div class="inv-slot"></div>
+        <div class="inv-slot"></div
+        ><div class="inv-slot"></div>
         <div class="inv-slot"></div>
         <div class="inv-slot"></div>`;
-      lives = 3;
-      scrolls = 0;
-      updateProgressUI();
-      setupBoard(false);
-      setupDragAndDrop();
-      resolvingLoss = false;
+      lives = 3; scrolls = 0; updateProgressUI(); setupBoard(false); setupDragAndDrop(); resolvingLoss = false;
     }, 1200);
   } else {
     showContinue(
       "Oh no! You've lost a heart.\nNo valid words, or keys remaining.\nThe scroll is now behind a new lock-\ntry and find it before you use all 3 hearts!",
       "Continue"
-    ).then(() => {
-      setupBoard(true);
-      resolvingLoss = false;
-    });
+    ).then(() => { setupBoard(true); resolvingLoss = false; });
   }
 }
 
 function isAnyRemainingWordPossible(){
   if (remainingWords.length === 0) return false;
-
   const counts = {};
   document.querySelectorAll('#letter-grid .letter').forEach(t => {
     if (t.dataset.active === "true") {
@@ -656,14 +579,12 @@ function isAnyRemainingWordPossible(){
       counts[ch] = (counts[ch] || 0) + 1;
     }
   });
-
   const canMake = (word) => {
     const need = {};
     for (const ch of word.toUpperCase()) need[ch] = (need[ch] || 0) + 1;
     for (const k in need) if (!counts[k] || counts[k] < need[k]) return false;
     return true;
   };
-
   return remainingWords.some(canMake);
 }
 
@@ -677,14 +598,12 @@ function canOpenHiddenLock(){
   const typeNeeded = getHiddenLockType();
   if (!typeNeeded) return false;
 
-  if (typeNeeded === 'wood') {
-    return counts.wood > 0 || pickPossible(counts) > 0;
-  }
-  if (typeNeeded === 'stone') {
+  if (typeNeeded === 'wood') return counts.wood > 0 || pickPossible(counts) > 0;
+  if (typeNeeded === 'stone'){
     const stonesFromWood = Math.floor(counts.wood / 2);
     return counts.stone > 0 || stonesFromWood > 0 || pickPossible(counts) > 0;
   }
-  if (typeNeeded === 'gold') {
+  if (typeNeeded === 'gold'){
     const stonesFromWood = Math.floor(counts.wood / 2);
     const totalStones = counts.stone + stonesFromWood;
     const goldFromStones = Math.floor(totalStones / 2);
@@ -692,138 +611,75 @@ function canOpenHiddenLock(){
   }
   return false;
 }
-
 function pickPossible(counts){
   const stonesFromWood = Math.floor(counts.wood / 2);
   const totalStones = counts.stone + stonesFromWood;
   const goldFromStones = Math.floor(totalStones / 2);
   const totalGold = counts.gold + goldFromStones;
-  const picks = Math.floor(totalGold / 2);
-  return picks;
+  return Math.floor(totalGold / 2);
 }
-
 function getHiddenLockType(){
   const el = document.querySelector(`.lock[data-id="${hiddenLockId}"]`);
   return el?.dataset.type || null;
 }
 
-/* ========== POPUPS & UTILS ========== */
-function clearPopupTimer(){
-  if (window._popupTimer){
-    clearTimeout(window._popupTimer);
-    window._popupTimer = null;
-  }
-}
-
+/* ========== Popups utils ========== */
+function clearPopupTimer(){ if (window._popupTimer){ clearTimeout(window._popupTimer); window._popupTimer = null; } }
 function showMessage(msg, opts = {}) {
-  const popup = document.getElementById('popup');
-  if (!popup) return;
+  const popup = document.getElementById('popup'); if (!popup) return;
   if (popup.dataset.dismiss === 'locked') return;
-
   const txt = document.getElementById('popup-text');
   const actions = document.getElementById('popup-actions');
-
-  clearPopupTimer();
-  txt.textContent = msg;
-  actions.innerHTML = "";
-  popup.dataset.dismiss = "";
-  popup.classList.remove('hidden');
-
-  const duration = (opts && typeof opts.duration === 'number')
-    ? opts.duration
-    : (opts.sticky ? 2200 : 1600);
-
+  clearPopupTimer(); txt.textContent = msg; actions.innerHTML = ""; popup.dataset.dismiss = ""; popup.classList.remove('hidden');
+  const duration = (opts && typeof opts.duration === 'number') ? opts.duration : (opts.sticky ? 2200 : 1600);
   window._popupTimer = setTimeout(() => hidePopup(), duration);
 }
-
 function showContinue(message, buttonLabel="Continue"){
   return new Promise(resolve => {
     const popup = document.getElementById('popup');
     const txt = document.getElementById('popup-text');
     const actions = document.getElementById('popup-actions');
     if (!popup || !txt || !actions) { resolve(); return; }
-
-    clearPopupTimer();
-    txt.textContent = message;
-    actions.innerHTML = "";
-
-    const btn = document.createElement('button');
-    btn.className = 'btn primary';
-    btn.textContent = buttonLabel;
-
-    btn.addEventListener('click', () => {
-      popup.classList.add('hidden');
-      popup.dataset.dismiss = "";
-      resolve();
-    });
-
+    clearPopupTimer(); txt.textContent = message; actions.innerHTML = "";
+    const btn = document.createElement('button'); btn.className = 'btn primary'; btn.textContent = buttonLabel;
+    btn.addEventListener('click', () => { popup.classList.add('hidden'); popup.dataset.dismiss = ""; resolve(); });
     actions.appendChild(btn);
-
-    popup.dataset.dismiss = "locked";
-    popup.classList.remove('hidden');
+    popup.dataset.dismiss = "locked"; popup.classList.remove('hidden');
   });
 }
-
-function hidePopup(){
-  const p = document.getElementById('popup');
-  if (p?.dataset.dismiss === 'locked') return;
-  clearPopupTimer();
-  p?.classList.add('hidden');
-}
-
+function hidePopup(){ const p = document.getElementById('popup'); if (p?.dataset.dismiss === 'locked') return; clearPopupTimer(); p?.classList.add('hidden'); }
 function confirmChoice(message, yesLabel="Yes", noLabel="No"){
   return new Promise(resolve => {
     const popup = document.getElementById('popup');
     const txt = document.getElementById('popup-text');
     const actions = document.getElementById('popup-actions');
     if (!popup || !txt || !actions) { resolve(false); return; }
-
-    clearPopupTimer();
-    txt.textContent = message;
-    actions.innerHTML = "";
-
-    const yes = document.createElement('button');
-    yes.className = 'btn primary';
-    yes.textContent = yesLabel;
-
-    const no = document.createElement('button');
-    no.className = 'btn';
-    no.textContent = noLabel;
-
+    clearPopupTimer(); txt.textContent = message; actions.innerHTML = "";
+    const yes = document.createElement('button'); yes.className = 'btn primary'; yes.textContent = yesLabel;
+    const no  = document.createElement('button'); no.className  = 'btn'; no.textContent = noLabel;
     yes.addEventListener('click', () => { popup.classList.add('hidden'); popup.dataset.dismiss=""; resolve(true); });
-    no.addEventListener('click',  () => { popup.classList.add('hidden'); popup.dataset.dismiss=""; resolve(false); });
-
-    popup.dataset.dismiss = "locked";
-    actions.appendChild(yes);
-    actions.appendChild(no);
-    popup.classList.remove('hidden');
+    no .addEventListener('click', () => { popup.classList.add('hidden'); popup.dataset.dismiss=""; resolve(false); });
+    popup.dataset.dismiss = "locked"; actions.appendChild(yes); actions.appendChild(no); popup.classList.remove('hidden');
   });
 }
-
-function shuffle(arr){
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
+function shuffle(arr){ for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
 
 /* ==================== PRIZE WHEEL ==================== */
 function markPrizeTile(){
   const tiles = Array.from(document.querySelectorAll('#letter-grid .letter'));
   if (tiles.length === 0) return;
-  const activeIdxs = tiles.map((t,i)=>i);
-  prizeTileIndex = activeIdxs[Math.floor(Math.random()*activeIdxs.length)];
-  tiles[prizeTileIndex].classList.add('prize');
+  const idx = Math.floor(Math.random()*tiles.length);
+  prizeTileIndex = idx;
+  tiles[idx].classList.add('prize');
 }
 
-function openPrizeWheel(){
-  const wheel = document.getElementById('wheel');
+function buildWheelVisual(){
   const dial  = document.getElementById('wheel-dial');
   const cap   = document.getElementById('wheel-caption');
-  if (!wheel || !dial || !cap) return;
+  const spin  = document.getElementById('wheel-spin');
+  if (!dial || !cap || !spin) return;
 
-  // Build gradient
+  // gradient
   let total = WHEEL_SEGMENTS.reduce((a,s)=>a+s.weight,0);
   let acc = 0;
   const stops = WHEEL_SEGMENTS.map(seg => {
@@ -833,36 +689,93 @@ function openPrizeWheel(){
   }).join(', ');
   dial.style.background = `conic-gradient(${stops})`;
 
-  // Weighted pick
-  const r = Math.random() * total;
-  let sum = 0, chosenIndex = 0;
-  for (let i=0;i<WHEEL_SEGMENTS.length;i++){ sum += WHEEL_SEGMENTS[i].weight; if (r < sum){ chosenIndex = i; break; } }
-  const chosen = WHEEL_SEGMENTS[chosenIndex];
+  // clear previous icons
+  dial.querySelectorAll('.wheel-icon').forEach(n => n.remove());
 
-  // Target angle (center of segment)
+  // place icons at segment centers (they rotate with the dial)
   let cum = 0;
-  for (let i=0;i<chosenIndex;i++) cum += WHEEL_SEGMENTS[i].weight;
-  const segStart = (cum/total) * 360;
-  const segSpan  = (chosen.weight/total) * 360;
-  const segCenter= segStart + segSpan/2;
+  const radius = 92; // px from center
+  for (const seg of WHEEL_SEGMENTS){
+    const start = (cum/total)*360;
+    const span  = (seg.weight/total)*360;
+    cum += seg.weight;
+    const center = start + span/2;
 
-  const spins = 4 + Math.floor(Math.random()*3);
-  const target = spins*360 + (360 - segCenter);
+    const el = document.createElement('div');
+    el.className = seg.id === 'lose' ? 'wheel-icon badge' : 'wheel-icon';
+    if (seg.id === 'lose'){
+      el.textContent = '−1';
+    } else if (seg.icon){
+      const img = document.createElement('img');
+      img.src = seg.icon;
+      img.alt = seg.label;
+      el.appendChild(img);
+    }
+    el.style.transform = `translate(-50%,-50%) rotate(${center}deg) translate(${radius}px) rotate(${-center}deg)`;
+    dial.appendChild(el);
+  }
 
-  cap.textContent = "Spinning…";
-  dial.style.transform = `rotate(0deg)`;
+  // reset dial + UI
+  dial.style.transform = 'rotate(0deg)';
+  cap.textContent = 'Spin to win';
+  spin.disabled = false;
+}
+
+function openPrizeWheel(){
+  const wheel = document.getElementById('wheel');
+  const spin  = document.getElementById('wheel-spin');
+  if (!wheel || !spin) return;
+
+  buildWheelVisual();
   wheel.classList.remove('hidden');
-  void dial.offsetWidth; // reflow
-  dial.style.transform = `rotate(${target}deg)`;
 
-  setTimeout(async () => {
-    cap.textContent = chosen.label;
+  // attach one-time spin handler
+  spin.onclick = async () => {
+    spin.disabled = true;
+    await spinWheel(); // do the animation + outcome
+  };
+}
+
+function spinWheel(){
+  return new Promise(resolve => {
+    const dial  = document.getElementById('wheel-dial');
+    const cap   = document.getElementById('wheel-caption');
+    const wheel = document.getElementById('wheel');
+    if (!dial || !cap || !wheel) { resolve(); return; }
+
+    const total = WHEEL_SEGMENTS.reduce((a,s)=>a+s.weight,0);
+
+    // weighted pick
+    const r = Math.random() * total;
+    let sum = 0, chosenIndex = 0;
+    for (let i=0;i<WHEEL_SEGMENTS.length;i++){ sum += WHEEL_SEGMENTS[i].weight; if (r < sum){ chosenIndex = i; break; } }
+    const chosen = WHEEL_SEGMENTS[chosenIndex];
+
+    // angle to stop on center of chosen segment
+    let cum = 0;
+    for (let i=0;i<chosenIndex;i++) cum += WHEEL_SEGMENTS[i].weight;
+    const segStart = (cum/total) * 360;
+    const segSpan  = (chosen.weight/total) * 360;
+    const segCenter= segStart + segSpan/2;
+
+    const spins = 4 + Math.floor(Math.random()*3);
+    const target = spins*360 + (360 - segCenter);
+
+    cap.textContent = "Spinning…";
+    // trigger transition
+    void dial.offsetWidth;
+    dial.style.transform = `rotate(${target}deg)`;
+
     setTimeout(async () => {
-      wheel.classList.add('hidden');
-      await applyWheelOutcome(chosen.id);
-      maybeCheckLose();
-    }, 600);
-  }, 3400);
+      cap.textContent = chosen.label;
+      setTimeout(async () => {
+        wheel.classList.add('hidden');
+        await applyWheelOutcome(chosen.id);
+        maybeCheckLose();
+        resolve();
+      }, 600);
+    }, 3400);
+  });
 }
 
 async function applyWheelOutcome(outcome){
@@ -893,13 +806,7 @@ function revealScrollByPower(){
 function loseRandomInventoryKey(){
   return new Promise(resolve => {
     const keys = Array.from(document.querySelectorAll('#keys .key'));
-    if (keys.length === 0){
-      showMessage("No keys to lose!");
-      resolve();
-      return;
-    }
-
-    // light all
+    if (keys.length === 0){ showMessage("No keys to lose!"); resolve(); return; }
     keys.forEach(k => { k.classList.remove('inv-dim'); k.classList.add('inv-lit'); });
 
     let pool = keys.slice();
@@ -914,9 +821,7 @@ function loseRandomInventoryKey(){
             keys.forEach(k => k.classList.remove('inv-lit','inv-dim','inv-doomed'));
             resolve();
           }, 260);
-        } else {
-          resolve();
-        }
+        } else { resolve(); }
         return;
       }
       const i = Math.floor(Math.random()*pool.length);
