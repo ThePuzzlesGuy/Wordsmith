@@ -1,3 +1,4 @@
+/* ================= STATE ================= */
 let boards = [];
 let validWords = [];
 let remainingWords = [];
@@ -15,25 +16,7 @@ let isSelecting = false;
 
 let prizeTileIndex = null;
 
-/* ----- Prizes (single source of truth) ----- */
-const PRIZES = {
-  wood:  { id:'wood',  label:'Wood Key',       color:'#D7B48A', icon:'sprites/key_wood.png',  weight:28 },
-  stone: { id:'stone', label:'Stone Key',      color:'#C9CCD3', icon:'sprites/key_stone.png', weight:28 },
-  gold:  { id:'gold',  label:'Gold Key',       color:'#FFD24A', icon:'sprites/key_gold.png',  weight:23 },
-  pick:  { id:'pick',  label:'Lock Pick',      color:'#8C5A34', icon:'sprites/key_pick.png',  weight:12 },
-  lose:  { id:'lose',  label:'Lose a Key',     color:'#F06A6A', icon:null,                     weight: 6 }, // total, split below
-  solve: { id:'solve', label:'Reveal Scroll',  color:'#7ED4A6', icon:'sprites/scroll.png',     weight: 3 },
-};
-
-/* Equal visual slices (8). We’ll also pick by slice using per-slice weight.
-   Each “lose” slice is 2% (three of them = 6% total). */
-const WHEEL_ORDER = ['wood','lose','stone','solve','gold','lose','pick','lose'];
-const SLICES = WHEEL_ORDER.map(id => {
-  const p = PRIZES[id];
-  return { id, label:p.label, color:p.color, icon:p.icon, weight: id==='lose' ? 2 : p.weight };
-});
-const TOTAL_SLICE_WEIGHT = SLICES.reduce((a,s)=>a+s.weight,0);
-
+/* ========== Boot ========= */
 document.addEventListener("DOMContentLoaded", async () => {
   await loadBoards();
   setupBoard(false);
@@ -99,7 +82,7 @@ function setupBoard(restartSame=false) {
     gridEl.appendChild(div);
   }
 
-  markPrizeTile();
+  markPrizeTile();          // place the wheel tile
   buildDynamicLocks(currentBoard.words);
 }
 
@@ -709,7 +692,18 @@ function confirmChoice(message, yesLabel="Yes", noLabel="No"){
 }
 function shuffle(arr){ for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
 
-/* ==================== PRIZE WHEEL ==================== */
+/* ==================== NEW PRIZE WHEEL ==================== */
+
+/** Truth: one array that drives color, icon, and outcome. Equal chances. */
+const PW_SLICES = [
+  {id:'wood',  label:'Wood Key',      color:'#D7B48A', icon:'sprites/key_wood.png'},
+  {id:'stone', label:'Stone Key',     color:'#C9CCD3', icon:'sprites/key_stone.png'},
+  {id:'gold',  label:'Gold Key',      color:'#FFD24A', icon:'sprites/key_gold.png'},
+  {id:'pick',  label:'Lock Pick',     color:'#8C5A34', icon:'sprites/key_pick.png'},
+  {id:'solve', label:'Reveal Scroll', color:'#7ED4A6', icon:'sprites/scroll.png'},
+  {id:'lose',  label:'Lose a Key',    color:'#F06A6A', icon:null}
+];
+
 function markPrizeTile(){
   const tiles = Array.from(document.querySelectorAll('#letter-grid .letter'));
   if (tiles.length === 0) return;
@@ -718,105 +712,104 @@ function markPrizeTile(){
   tiles[prizeTileIndex].classList.add('prize');
 }
 
-/* Build the wheel from SLICES so colour + icon + outcome always match */
-function buildWheelVisual(){
-  const dial  = document.getElementById('wheel-dial');
-  const spin  = document.getElementById('wheel-spin');
-  if (!dial || !spin) return;
+function openPrizeWheel(){
+  buildPrizeWheel();
+  const modal = document.getElementById('pw-modal');
+  const btn   = document.getElementById('pw-spin');
+  if (!modal || !btn) return;
+  modal.classList.remove('hidden');
+  btn.disabled = false;
+  btn.onclick = spinPrizeWheel;
+}
 
-  const N = SLICES.length;           // 8
-  const base = 360 / N;              // 45°
-  const pct  = 100 / N;
+function buildPrizeWheel(){
+  const dial = document.getElementById('pw-dial');
+  if (!dial) return;
 
-  // Gradient measured from TOP (−90°) => first slice starts at pointer.
-  const stops = SLICES.map((seg, i) => `${seg.color} ${i*pct}% ${(i+1)*pct}%`).join(', ');
+  // Equal slices conic gradient starting at TOP (pointer)
+  const N = PW_SLICES.length; // 6
+  const pct = 100/N;
+  const stops = PW_SLICES.map((s,i)=>`${s.color} ${i*pct}% ${(i+1)*pct}%`).join(', ');
   dial.style.background = `conic-gradient(from -90deg, ${stops})`;
 
-  // Clear old icons and place new ones at slice centres (convert to CSS angle: right = 0°)
-  dial.querySelectorAll('.wheel-icon').forEach(n => n.remove());
-  const radius = 96;
+  // Clear previous icons
+  dial.querySelectorAll('.pw-icon').forEach(n => n.remove());
 
+  // Place icons via trig (no rotational math drift)
+  const base = 360/N;
+  const r = 95; // radius
   for (let i=0;i<N;i++){
-    const seg = SLICES[i];
-    const centerFromTop = i*base + base/2;         // 0° = top, clockwise
-    const cssAngle = centerFromTop - 90;           // convert to CSS rotate baseline (right = 0°)
+    const slice = PW_SLICES[i];
+    const centerFromTop = i*base + base/2; // degrees, clockwise from TOP
+    const rad = (Math.PI/180) * centerFromTop;
+    const x = r * Math.sin(rad);
+    const y = -r * Math.cos(rad);
 
-    const icon = document.createElement('div');
-    icon.className = seg.id === 'lose' ? 'wheel-icon badge' : 'wheel-icon';
-    if (seg.id === 'lose') {
-      icon.textContent = '−1';
-    } else if (seg.icon){
+    const el = document.createElement('div');
+    el.className = slice.id === 'lose' ? 'pw-icon badge' : 'pw-icon';
+    el.style.left = `calc(50% + ${x}px)`;
+    el.style.top  = `calc(50% + ${y}px)`;
+    if (slice.id === 'lose') {
+      el.textContent = '−1';
+    } else {
       const img = document.createElement('img');
-      img.src = seg.icon;
-      img.alt = seg.label;
-      icon.appendChild(img);
+      img.src = slice.icon;
+      img.alt = slice.label;
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'contain';
+      el.appendChild(img);
     }
-    icon.style.transform =
-      `translate(-50%,-50%) rotate(${cssAngle}deg) translate(${radius}px) rotate(${-cssAngle}deg)`;
-    dial.appendChild(icon);
+    dial.appendChild(el);
   }
 
-  dial.style.transform = 'rotate(0deg)';   // reset between spins
-  spin.disabled = false;
+  dial.style.transform = 'rotate(0deg)'; // reset between spins
 }
 
-function openPrizeWheel(){
-  const wheel = document.getElementById('wheel');
-  const spin  = document.getElementById('wheel-spin');
-  if (!wheel || !spin) return;
+function spinPrizeWheel(){
+  const dial  = document.getElementById('pw-dial');
+  const modal = document.getElementById('pw-modal');
+  const btn   = document.getElementById('pw-spin');
+  if (!dial || !modal || !btn) return;
 
-  buildWheelVisual();
-  wheel.classList.remove('hidden');
+  btn.disabled = true;
 
-  spin.onclick = async () => {
-    spin.disabled = true;
-    await spinWheel();
-  };
+  // Choose slice uniformly
+  const N = PW_SLICES.length;
+  const base = 360/N;
+  const index = Math.floor(Math.random()*N);
+  const outcomeId = PW_SLICES[index].id;
+
+  // Rotate so that slice center goes to TOP (under downward pointer)
+  const centerFromTop = index*base + base/2;
+  const spins = 4 + Math.floor(Math.random()*3); // 4–6 spins
+  const target = spins*360 - centerFromTop;
+
+  void dial.offsetWidth; // reflow
+  dial.style.transform = `rotate(${target}deg)`;
+
+  setTimeout(async () => {
+    modal.classList.add('hidden');
+    await resolvePrize(outcomeId);
+    maybeCheckLose();
+  }, 3300);
 }
 
-/* Pick a slice by weight, then rotate so its centre is at TOP under the pointer. */
-function spinWheel(){
-  return new Promise(resolve => {
-    const dial  = document.getElementById('wheel-dial');
-    const wheel = document.getElementById('wheel');
-    if (!dial || !wheel) { resolve(); return; }
-
-    // Weighted slice pick (directly on SLICES, so outcome === visual slice)
-    let r = Math.random() * TOTAL_SLICE_WEIGHT;
-    let chosenIndex = 0;
-    for (let i=0;i<SLICES.length;i++){
-      r -= SLICES[i].weight;
-      if (r <= 0){ chosenIndex = i; break; }
-    }
-    const outcomeId = SLICES[chosenIndex].id;
-
-    // Move chosen slice centre to TOP (pointer). Positive rotate = clockwise.
-    const N = SLICES.length;
-    const base = 360 / N;
-    const centerFromTop = chosenIndex*base + base/2;
-    const spins = 4 + Math.floor(Math.random()*3); // 4–6 full spins
-    const target = spins*360 - centerFromTop;
-
-    void dial.offsetWidth;                 // reflow to restart transition
-    dial.style.transform = `rotate(${target}deg)`;
-
-    setTimeout(async () => {
-      wheel.classList.add('hidden');
-      await applyWheelOutcome(outcomeId);
-      maybeCheckLose();
-      resolve();
-    }, 3400);
-  });
-}
-
-async function applyWheelOutcome(outcome){
-  if (['wood','stone','gold','pick'].includes(outcome)){
+async function resolvePrize(outcome){
+  if (outcome === 'wood' || outcome === 'stone' || outcome === 'gold' || outcome === 'pick'){
     spawnKey(outcome);
-    showMessage(`You won a ${outcome === 'pick' ? 'Lock Pick' : outcome[0].toUpperCase()+outcome.slice(1)+' key'}!`);
+    const name = outcome === 'pick' ? 'Lock Pick' : `${outcome[0].toUpperCase()+outcome.slice(1)} key`;
+    showMessage(`You won a ${name}!`);
     return;
   }
-  if (outcome === 'solve'){ revealScrollByPower(); return; }
-  if (outcome === 'lose'){ await loseRandomInventoryKey(); return; }
+  if (outcome === 'solve'){
+    revealScrollByPower();
+    return;
+  }
+  if (outcome === 'lose'){
+    await loseRandomInventoryKey();
+    return;
+  }
 }
 
 function revealScrollByPower(){
