@@ -20,12 +20,10 @@
   <main id="app">
     <!-- Left column -->
     <section class="play-area">
-      <!-- Locks row (built dynamically) -->
       <div class="locks-strip">
         <div id="locks" class="locks"></div>
       </div>
 
-      <!-- Parchment board -->
       <div class="board-wrap">
         <div class="parchment">
           <div id="letter-grid" class="grid"></div>
@@ -35,7 +33,6 @@
 
     <!-- Right column -->
     <aside class="sidebar">
-      <!-- Progress (hearts + scrolls) -->
       <div class="card progress-card">
         <div class="hearts" id="hearts">
           <img src="sprites/heart.png" alt="" class="heart">
@@ -117,15 +114,18 @@
     </div>
   </div>
 
-  <!-- NEW: Prize Wheel -->
+  <!-- Prize Wheel -->
   <div id="wheel" class="popup hidden">
     <div class="wheel-card">
       <div class="wheel-title">Prize Wheel</div>
       <div class="wheel-box">
         <div class="wheel-pointer"></div>
-        <div id="wheel-dial" class="wheel-dial"></div>
+        <div id="wheel-dial" class="wheel-dial"><!-- icons injected here --></div>
       </div>
-      <div id="wheel-caption" class="wheel-caption">Spinning…</div>
+      <div class="wheel-actions">
+        <button id="wheel-spin" class="btn primary">Spin</button>
+      </div>
+      <div id="wheel-caption" class="wheel-caption">Spin to win</div>
     </div>
   </div>
 
