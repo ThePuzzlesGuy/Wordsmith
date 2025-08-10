@@ -15,16 +15,19 @@ let isSelecting = false;
 
 let prizeTileIndex = null;
 
-/* Equal visual slices; weights still apply for outcome */
+/* Equal visual slices; weighted backend outcomes.
+   Colors per spec:
+   Gold=#FFD24A, Stone=#C9CCD3, Wood(light)=#D7B48A, Pick(dark)=#8C5A34,
+   Lose=Red #F06A6A, Reveal=Green #7ED4A6 */
 const WHEEL_SEGMENTS = [
-  { id:'wood',  label:'Wood Key',     weight:28, color:'#e6c27a', icon:'sprites/key_wood.png' },
-  { id:'lose',  label:'Lose a Key',   weight: 2, color:'#ffb0b0', icon:null },
-  { id:'stone', label:'Stone Key',    weight:28, color:'#c8c7c9', icon:'sprites/key_stone.png' },
-  { id:'solve', label:'Reveal Scroll',weight: 3, color:'#91e4c5', icon:'sprites/scroll.png' },
-  { id:'gold',  label:'Gold Key',     weight:23, color:'#ffd35f', icon:'sprites/key_gold.png' },
-  { id:'lose',  label:'Lose a Key',   weight: 2, color:'#ffb0b0', icon:null },
-  { id:'pick',  label:'Lock Pick',    weight:12, color:'#f3a6a6', icon:'sprites/key_pick.png' },
-  { id:'lose',  label:'Lose a Key',   weight: 2, color:'#ffb0b0', icon:null },
+  { id:'wood',  label:'Wood Key',     weight:28, color:'#D7B48A', icon:'sprites/key_wood.png' },
+  { id:'lose',  label:'Lose a Key',   weight: 2, color:'#F06A6A', icon:null },
+  { id:'stone', label:'Stone Key',    weight:28, color:'#C9CCD3', icon:'sprites/key_stone.png' },
+  { id:'solve', label:'Reveal Scroll',weight: 3, color:'#7ED4A6', icon:'sprites/scroll.png' },
+  { id:'gold',  label:'Gold Key',     weight:23, color:'#FFD24A', icon:'sprites/key_gold.png' },
+  { id:'lose',  label:'Lose a Key',   weight: 2, color:'#F06A6A', icon:null },
+  { id:'pick',  label:'Lock Pick',    weight:12, color:'#8C5A34', icon:'sprites/key_pick.png' },
+  { id:'lose',  label:'Lose a Key',   weight: 2, color:'#F06A6A', icon:null },
 ];
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -189,7 +192,7 @@ async function onLockDrop(e, lock) {
   }
 }
 
-/* Lock pick flow unchanged */
+/* Lock pick flow */
 async function handleLockPickDrop(lock, keyEl){
   const wantMulti = await confirmChoice(
     "Use the lock pick on multiple locks?",
@@ -197,10 +200,18 @@ async function handleLockPickDrop(lock, keyEl){
     "No, just this lock"
   );
 
-  if (!wantMulti) { keyEl.remove(); openLockSimple(lock, true); return; }
+  if (!wantMulti) {
+    keyEl.remove();
+    openLockSimple(lock, /*announce*/true);
+    return;
+  }
 
   const ok50 = await runGamble(0.5);
-  if (!ok50) { keyEl.remove(); showMessage("Lock picking unsuccessful"); return; }
+  if (!ok50) {
+    keyEl.remove();
+    showMessage("Lock picking unsuccessful");
+    return;
+  }
 
   const tryThree = await confirmChoice(
     "Key is good for 2 uses. Try for 3 uses?",
@@ -208,20 +219,34 @@ async function handleLockPickDrop(lock, keyEl){
     "No, take 2"
   );
 
-  if (!tryThree) { keyEl.remove(); openLockSimple(lock, true); openRandomWrong(1, [Number(lock.dataset.id)]); return; }
+  if (!tryThree) {
+    keyEl.remove();
+    openLockSimple(lock, /*announce*/true);
+    openRandomWrong(1, [Number(lock.dataset.id)]);
+    return;
+  }
 
   const ok25 = await runGamble(0.25);
-  if (!ok25) { keyEl.remove(); showMessage("Lock picking unsuccessful"); return; }
+  if (!ok25) {
+    keyEl.remove();
+    showMessage("Lock picking unsuccessful");
+    return;
+  }
 
   keyEl.remove();
-  openLockSimple(lock, true);
+  openLockSimple(lock, /*announce*/true);
   openRandomWrong(2, [Number(lock.dataset.id)]);
 }
 
 function openLockSimple(lock, announce){
   const isScrollHere = Number(lock.dataset.id) === Number(hiddenLockId);
-  if (isScrollHere) revealScroll(lock);
-  else { lock.classList.add("failed"); if (announce) showMessage("Nothing behind this lock..."); maybeCheckLose(); }
+  if (isScrollHere) {
+    revealScroll(lock);
+  } else {
+    lock.classList.add("failed");
+    if (announce) showMessage("Nothing behind this lock...");
+    maybeCheckLose();
+  }
 }
 
 function openRandomWrong(n, excludeIds = []) {
@@ -240,6 +265,7 @@ function openRandomWrong(n, excludeIds = []) {
 function revealScroll(lock){
   scrolls += 1;
   updateProgressUI();
+
   showMessage("You've found the scroll!");
   const scroll = document.createElement("img");
   scroll.src = "sprites/scroll.png";
@@ -292,7 +318,6 @@ function endSelect() {
 
       const usedPrize = currentPath.some(el => Number(el.dataset.index) === Number(prizeTileIndex));
       markUsedTiles(currentPath);
-
       if (usedPrize) { prizeTileIndex = null; setTimeout(openPrizeWheel, 0); }
     } else {
       invalidWordFeedback(currentPath);
@@ -309,18 +334,36 @@ function endSelect() {
   maybeCheckLose();
 }
 
-function markUsedTiles(tiles) { tiles.forEach(el => { el.dataset.active = "false"; el.classList.add("used"); }); }
-function invalidWordFeedback(tiles) { tiles.forEach(el => { el.classList.add("invalid"); setTimeout(() => el.classList.remove("invalid"), 400); }); }
+function markUsedTiles(tiles) {
+  tiles.forEach(el => {
+    el.dataset.active = "false";
+    el.classList.add("used");
+  });
+}
 
-/* ========== KEYS / INVENTORY / SMITHING ========== */
-function giveKey(len) { const type = len === 3 ? 'wood' : len === 4 ? 'stone' : 'gold'; spawnKey(type); }
+function invalidWordFeedback(tiles) {
+  tiles.forEach(el => {
+    el.classList.add("invalid");
+    setTimeout(() => el.classList.remove("invalid"), 400);
+  });
+}
+
+/* ========== KEYS, INVENTORY, SMITHING ========== */
+function giveKey(len) {
+  const type = len === 3 ? 'wood' : len === 4 ? 'stone' : 'gold';
+  spawnKey(type);
+}
 
 function spawnKey(type){
   const inv = document.getElementById("inventory");
   const keyGrid = document.getElementById("keys");
 
   const emptySlot = Array.from(keyGrid.querySelectorAll('.inv-slot')).find(s => !s.querySelector('.key'));
-  if (!emptySlot) { inv.classList.add('full'); setTimeout(() => inv.classList.remove('full'), 320); return; }
+  if (!emptySlot) {
+    inv.classList.add('full');
+    setTimeout(() => inv.classList.remove('full'), 320);
+    return;
+  }
 
   const img = document.createElement("img");
   img.src = `sprites/key_${type}.png`;
@@ -345,7 +388,10 @@ function spawnKey(type){
 function resetGame() {
   const grid = document.getElementById("letter-grid");
   grid.style.opacity = 0;
-  setTimeout(() => { grid.style.opacity = 1; setupBoard(false); }, 400);
+  setTimeout(() => {
+    grid.style.opacity = 1;
+    setupBoard(false);
+  }, 400);
 }
 
 function setupDragAndDrop() {
@@ -429,10 +475,7 @@ function recallForgeKeysToInventory(){
 
 function getCombinerSlots(){
   const root = document.getElementById('smith');
-  return {
-    a: root.querySelector('.drop-slot[data-slot="a"]'),
-    b: root.querySelector('.drop-slot[data-slot="b"]')
-  };
+  return { a: root.querySelector('.drop-slot[data-slot="a"]'), b: root.querySelector('.drop-slot[data-slot="b"]') };
 }
 
 function updateForgeButton(){
@@ -474,14 +517,20 @@ function doCombine(){
   smith.classList.add('strike');
   setTimeout(() => smith.classList.remove('strike'), 600);
 
-  if (result === 'pick') { spawnKey('pick'); showMessage(`You've successfully crafted a Lock Pick!`); }
-  else { spawnKey(result); const label = result.charAt(0).toUpperCase() + result.slice(1); showMessage(`You've successfully crafted a ${label} key!`); }
+  if (result === 'pick') {
+    spawnKey('pick');
+    showMessage(`You've successfully crafted a Lock Pick!`);
+  } else {
+    spawnKey(result);
+    const label = result.charAt(0).toUpperCase() + result.slice(1);
+    showMessage(`You've successfully crafted a ${label} key!`);
+  }
 
   updateForgeButton();
   maybeCheckLose();
 }
 
-/* ========== Durability/Gamble ========== */
+/* ========== DURABILITY & GAMBLE ========== */
 function runDurabilityCheck(keyType){
   return new Promise(resolve => {
     if (keyType === 'pick') { resolve(true); return; }
@@ -489,9 +538,14 @@ function runDurabilityCheck(keyType){
     showGambleBar(survival, resolve);
   });
 }
-function runGamble(successChance){ return new Promise(resolve => { showGambleBar(successChance, resolve); }); }
+
+function runGamble(successChance){
+  return new Promise(resolve => { showGambleBar(successChance, resolve); });
+}
+
 function showGambleBar(successChance, resolve){
   const breakOdds = 1 - successChance;
+
   const dur = document.getElementById('durability');
   const cursor = document.getElementById('dur-cursor');
   const caption = document.getElementById('dur-caption');
@@ -538,9 +592,11 @@ function updateProgressUI(){
 
 function maybeCheckLose(){
   if (resolvingLoss) return;
+
   if (isAnyRemainingWordPossible()) return;
   if (canOpenHiddenLock()) return;
 
+  // Lose a life and restart SAME board (keep inventory).
   resolvingLoss = true;
   lives = Math.max(0, lives - 1);
   updateProgressUI();
@@ -554,18 +610,29 @@ function maybeCheckLose(){
         <div class="inv-slot"></div>
         <div class="inv-slot"></div>
         <div class="inv-slot"></div>`;
-      lives = 3; scrolls = 0; updateProgressUI(); setupBoard(false); setupDragAndDrop(); resolvingLoss = false;
+      lives = 3;
+      scrolls = 0;
+      updateProgressUI();
+      setupBoard(/*restartSame=*/false);
+      setupDragAndDrop();
+      resolvingLoss = false;
     }, 1200);
   } else {
+    // Show Continue modal; after click, retry same board
     showContinue(
       "Oh no! You've lost a heart.\nNo valid words, or keys remaining.\nThe scroll is now behind a new lock-\ntry and find it before you use all 3 hearts!",
       "Continue"
-    ).then(() => { setupBoard(true); resolvingLoss = false; });
+    ).then(() => {
+      setupBoard(/*restartSame=*/true);
+      resolvingLoss = false;
+    });
   }
 }
 
+/* Is any remaining word possible from ACTIVE letters? (multiset check) */
 function isAnyRemainingWordPossible(){
   if (remainingWords.length === 0) return false;
+
   const counts = {};
   document.querySelectorAll('#letter-grid .letter').forEach(t => {
     if (t.dataset.active === "true") {
@@ -573,12 +640,14 @@ function isAnyRemainingWordPossible(){
       counts[ch] = (counts[ch] || 0) + 1;
     }
   });
+
   const canMake = (word) => {
     const need = {};
     for (const ch of word.toUpperCase()) need[ch] = (need[ch] || 0) + 1;
     for (const k in need) if (!counts[k] || counts[k] < need[k]) return false;
     return true;
   };
+
   return remainingWords.some(canMake);
 }
 
@@ -592,12 +661,14 @@ function canOpenHiddenLock(){
   const typeNeeded = getHiddenLockType();
   if (!typeNeeded) return false;
 
-  if (typeNeeded === 'wood') return counts.wood > 0 || pickPossible(counts) > 0;
-  if (typeNeeded === 'stone'){
+  if (typeNeeded === 'wood') {
+    return counts.wood > 0 || pickPossible(counts) > 0;
+  }
+  if (typeNeeded === 'stone') {
     const stonesFromWood = Math.floor(counts.wood / 2);
     return counts.stone > 0 || stonesFromWood > 0 || pickPossible(counts) > 0;
   }
-  if (typeNeeded === 'gold'){
+  if (typeNeeded === 'gold') {
     const stonesFromWood = Math.floor(counts.wood / 2);
     const totalStones = counts.stone + stonesFromWood;
     const goldFromStones = Math.floor(totalStones / 2);
@@ -605,58 +676,118 @@ function canOpenHiddenLock(){
   }
   return false;
 }
+
 function pickPossible(counts){
   const stonesFromWood = Math.floor(counts.wood / 2);
   const totalStones = counts.stone + stonesFromWood;
   const goldFromStones = Math.floor(totalStones / 2);
   const totalGold = counts.gold + goldFromStones;
-  return Math.floor(totalGold / 2);
+  const picks = Math.floor(totalGold / 2);
+  return picks;
 }
+
 function getHiddenLockType(){
   const el = document.querySelector(`.lock[data-id="${hiddenLockId}"]`);
   return el?.dataset.type || null;
 }
 
 /* ========== POPUPS & UTILS ========== */
-function clearPopupTimer(){ if (window._popupTimer){ clearTimeout(window._popupTimer); window._popupTimer = null; } }
+function clearPopupTimer(){
+  if (window._popupTimer){
+    clearTimeout(window._popupTimer);
+    window._popupTimer = null;
+  }
+}
+
 function showMessage(msg, opts = {}) {
-  const popup = document.getElementById('popup'); if (!popup) return;
-  if (popup.dataset.dismiss === 'locked') return;
+  const popup = document.getElementById('popup');
   const txt = document.getElementById('popup-text');
   const actions = document.getElementById('popup-actions');
-  clearPopupTimer(); txt.textContent = msg; actions.innerHTML = ""; popup.dataset.dismiss = ""; popup.classList.remove('hidden');
-  const duration = (opts && typeof opts.duration === 'number') ? opts.duration : (opts.sticky ? 2200 : 1600);
+  if (!popup || !txt || !actions) return;
+
+  clearPopupTimer();                // ← clear any old timer
+  txt.textContent = msg;
+  actions.innerHTML = "";           // no buttons
+  popup.dataset.dismiss = "";       // allow backdrop close
+  popup.classList.remove('hidden');
+
+  const duration = (opts && typeof opts.duration === 'number')
+    ? opts.duration
+    : (opts.sticky ? 2200 : 1600);
+
   window._popupTimer = setTimeout(() => hidePopup(), duration);
 }
+
 function showContinue(message, buttonLabel="Continue"){
   return new Promise(resolve => {
     const popup = document.getElementById('popup');
     const txt = document.getElementById('popup-text');
     const actions = document.getElementById('popup-actions');
     if (!popup || !txt || !actions) { resolve(); return; }
-    clearPopupTimer(); txt.textContent = message; actions.innerHTML = "";
-    const btn = document.createElement('button'); btn.className = 'btn primary'; btn.textContent = buttonLabel;
-    btn.addEventListener('click', () => { popup.classList.add('hidden'); popup.dataset.dismiss = ""; resolve(); });
+
+    clearPopupTimer();              // ← kill any previous auto-hide
+    txt.textContent = message;
+    actions.innerHTML = "";
+
+    const btn = document.createElement('button');
+    btn.className = 'btn primary';
+    btn.textContent = buttonLabel;
+
+    btn.addEventListener('click', () => {
+      popup.classList.add('hidden');
+      popup.dataset.dismiss = "";   // unlock backdrop for normal popups
+      resolve();
+    });
+
     actions.appendChild(btn);
-    popup.dataset.dismiss = "locked"; popup.classList.remove('hidden');
+
+    popup.dataset.dismiss = "locked"; // disable backdrop click-to-close
+    popup.classList.remove('hidden');
   });
 }
-function hidePopup(){ const p = document.getElementById('popup'); if (p?.dataset.dismiss === 'locked') return; clearPopupTimer(); p?.classList.add('hidden'); }
+
+function hidePopup(){
+  clearPopupTimer();                // ← ensure no stray timers fire later
+  const p = document.getElementById('popup');
+  if (p) p.classList.add('hidden');
+}
+
 function confirmChoice(message, yesLabel="Yes", noLabel="No"){
   return new Promise(resolve => {
     const popup = document.getElementById('popup');
     const txt = document.getElementById('popup-text');
     const actions = document.getElementById('popup-actions');
     if (!popup || !txt || !actions) { resolve(false); return; }
-    clearPopupTimer(); txt.textContent = message; actions.innerHTML = "";
-    const yes = document.createElement('button'); yes.className = 'btn primary'; yes.textContent = yesLabel;
-    const no  = document.createElement('button'); no.className  = 'btn'; no.textContent = noLabel;
+
+    clearPopupTimer();              // ← no auto-hide during choice
+    txt.textContent = message;
+    actions.innerHTML = "";
+
+    const yes = document.createElement('button');
+    yes.className = 'btn primary';
+    yes.textContent = yesLabel;
+
+    const no = document.createElement('button');
+    no.className = 'btn';
+    no.textContent = noLabel;
+
     yes.addEventListener('click', () => { popup.classList.add('hidden'); popup.dataset.dismiss=""; resolve(true); });
-    no .addEventListener('click', () => { popup.classList.add('hidden'); popup.dataset.dismiss=""; resolve(false); });
-    popup.dataset.dismiss = "locked"; actions.appendChild(yes); actions.appendChild(no); popup.classList.remove('hidden');
+    no.addEventListener('click',  () => { popup.classList.add('hidden'); popup.dataset.dismiss=""; resolve(false); });
+
+    popup.dataset.dismiss = "locked";
+    actions.appendChild(yes);
+    actions.appendChild(no);
+    popup.classList.remove('hidden');
   });
 }
-function shuffle(arr){ for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+
+function shuffle(arr){
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 /* ==================== PRIZE WHEEL ==================== */
 function markPrizeTile(){
@@ -739,15 +870,17 @@ function spinWheel(){
     for (let i=0;i<WHEEL_SEGMENTS.length;i++){ sum += WHEEL_SEGMENTS[i].weight; if (r < sum){ chosenIndex = i; break; } }
     const chosen = WHEEL_SEGMENTS[chosenIndex];
 
-    // center angle for equal slices
+    // center angle for equal slices, with pointer at TOP (90°)
     const N = WHEEL_SEGMENTS.length;
     const base = 360 / N;
     const center = chosenIndex * base + base/2;
 
     const spins = 4 + Math.floor(Math.random()*3);
-    const target = spins*360 + (360 - center);
+    const pointerAngle = 90; // top
+    const offset = (pointerAngle - center + 360) % 360;
+    const target = spins*360 + offset;
 
-    // trigger transition
+    // spin
     void dial.offsetWidth;
     dial.style.transform = `rotate(${target}deg)`;
 
