@@ -693,24 +693,43 @@ function confirmChoice(message, yesLabel="Yes", noLabel="No"){
 function shuffle(arr){ for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
 
 /* ==================== NEW PRIZE WHEEL ==================== */
-/* Equal slices. Order is clockwise starting at TOP (12 o'clock). Lose appears 3 times. */
+/* Visual + logic slices.
+   - 3x 'lose' slices, each EXACTLY 2% (total 6%)
+   - The other 5 prizes split the remainder equally: 94% / 5 = 18.8% each
+   - Order is clockwise from TOP (12 o’clock); each 'lose' is separated by ≥1 slice.
+*/
 const PW_SLICES = [
-  {id:'wood',  color:'#D7B48A'}, // light brown
-  {id:'stone', color:'#C9CCD3'}, // gray
-  {id:'gold',  color:'#FFD24A'}, // gold
-  {id:'pick',  color:'#8C5A34'}, // dark brown
-  {id:'solve', color:'#7ED4A6'}, // green
-  {id:'lose',  color:'#F06A6A'}, // red
-  {id:'lose',  color:'#F06A6A'}, // red
-  {id:'lose',  color:'#F06A6A'}  // red
+  { id:'wood',  color:'#D7B48A', size:18.8 },
+  { id:'lose',  color:'#F06A6A', size: 2.0 },   // 2%
+  { id:'stone', color:'#C9CCD3', size:18.8 },
+  { id:'solve', color:'#7ED4A6', size:18.8 },
+  { id:'gold',  color:'#FFD24A', size:18.8 },
+  { id:'lose',  color:'#F06A6A', size: 2.0 },   // 2%
+  { id:'pick',  color:'#8C5A34', size:18.8 },
+  { id:'lose',  color:'#F06A6A', size: 2.0 }    // 2%
 ];
 
-function markPrizeTile(){
-  const tiles = Array.from(document.querySelectorAll('#letter-grid .letter'));
-  if (tiles.length === 0) return;
-  tiles.forEach(t => t.classList.remove('prize'));
-  prizeTileIndex = Math.floor(Math.random()*tiles.length);
-  tiles[prizeTileIndex].classList.add('prize');
+/* Helper to build gradient and cache cumulative ranges */
+let PW_RANGES = []; // [{startPct, endPct, centerDeg, id, color}]
+function buildPrizeWheel(){
+  const dial = document.getElementById('pw-dial');
+  if (!dial) return;
+
+  // Build conic gradient with exact percentages
+  let acc = 0;
+  PW_RANGES = PW_SLICES.map(s => {
+    const start = acc;
+    const end   = acc + s.size;
+    acc = end;
+    // center angle measured FROM TOP; conic-gradient uses -90deg offset, so keep percent and convert later
+    const centerPct = (start + end) / 2;
+    const centerDegFromTop = centerPct * 3.6; // 100% -> 360deg
+    return { startPct:start, endPct:end, centerDeg: centerDegFromTop, id:s.id, color:s.color };
+  });
+
+  const stops = PW_RANGES.map(r => `${r.color} ${r.startPct}% ${r.endPct}%`).join(', ');
+  dial.style.background = `conic-gradient(from -90deg, ${stops})`;
+  dial.style.transform = 'translateX(-50%) rotate(0deg)'; // reset
 }
 
 function openPrizeWheel(){
@@ -723,17 +742,6 @@ function openPrizeWheel(){
   btn.onclick = spinPrizeWheel;
 }
 
-function buildPrizeWheel(){
-  const dial = document.getElementById('pw-dial');
-  if (!dial) return;
-
-  const N = PW_SLICES.length; // 8
-  const pct = 100 / N;
-  const stops = PW_SLICES.map((s,i)=>`${s.color} ${i*pct}% ${(i+1)*pct}%`).join(', ');
-  dial.style.background = `conic-gradient(from -90deg, ${stops})`;
-  dial.style.transform = 'translateX(-50%) rotate(0deg)'; // reset
-}
-
 function spinPrizeWheel(){
   const dial  = document.getElementById('pw-dial');
   const modal = document.getElementById('pw-modal');
@@ -742,23 +750,20 @@ function spinPrizeWheel(){
 
   btn.disabled = true;
 
-  // Choose outcome uniformly among slices
-  const N = PW_SLICES.length;
-  const base = 360/N;
-  const index = Math.floor(Math.random()*N);
-  const outcomeId = PW_SLICES[index].id;
+  // Pick outcome by area-weight (matches visuals exactly)
+  const r = Math.random() * 100; // 0..100%
+  const chosen = PW_RANGES.find(seg => r >= seg.startPct && r < seg.endPct) || PW_RANGES[PW_RANGES.length-1];
 
-  // Pointer is at BOTTOM. Land the chosen slice center at 180°.
-  const centerFromTop = index*base + base/2;
+  // Pointer is at BOTTOM pointing UP; land chosen slice CENTER at 180° from TOP
   const spins = 4 + Math.floor(Math.random()*3); // 4–6 spins
-  const target = spins*360 + (180 - centerFromTop);
+  const target = spins*360 + (180 - chosen.centerDeg); // rotate dial so chosen center hits pointer
 
   void dial.offsetWidth; // reflow
   dial.style.transform = `translateX(-50%) rotate(${target}deg)`;
 
   setTimeout(async () => {
     modal.classList.add('hidden');
-    await resolvePrize(outcomeId);
+    await resolvePrize(chosen.id);
     maybeCheckLose();
   }, 3300);
 }
