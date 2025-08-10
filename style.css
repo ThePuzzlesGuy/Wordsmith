@@ -73,6 +73,7 @@ body{
 .lock img{ width:100%; height:100%; object-fit:contain; transition:transform .2s; }
 .lock.jiggle img{ animation:jiggle .5s; }
 .lock.failed img{ filter:brightness(.55) }
+
 @keyframes jiggle{
   0%{transform:rotate(0)} 25%{transform:rotate(-10deg)} 50%{transform:rotate(10deg)}
   75%{transform:rotate(-5deg)} 100%{transform:rotate(0)}
@@ -105,8 +106,10 @@ body{
   box-shadow:0 2px 0 #b18a5b, 0 6px 14px rgba(0,0,0,.15);
   transition:transform .06s, background .2s, border-color .2s;
 }
+
 .letter.used{ opacity:.45; pointer-events:none; filter:saturate(.6) }
 .letter.invalid{ animation:shake .35s }
+
 @keyframes shake{
   0%{transform:translateX(0)} 25%{transform:translateX(-5px)} 50%{transform:translateX(5px)}
   75%{transform:translateX(-3px)} 100%{transform:translateX(0)}
@@ -156,7 +159,7 @@ body{
 .legend li{ display:flex; align-items:center; gap:10px; font-weight:700; color:#4a3826; }
 .legend-key{ width:22px; height:22px; object-fit:contain; }
 
-/* ===== NEW: Smithing panel ===== */
+/* ===== Smithing panel ===== */
 .smith.card{ display:flex; flex-direction:column; gap:12px; }
 .smith-card{
   background:linear-gradient(180deg,#fff9eb,#f6ebcf);
@@ -166,7 +169,11 @@ body{
   box-shadow: var(--shadow);
 }
 .smith-top{
-  display:flex; align-items:center; justify-content:space-between; gap:14px;
+  display:grid;
+  grid-template-columns: auto 32px auto;  /* slots on sides, plus centered */
+  align-items:center;
+  justify-items:center;                   /* center each cell's content */
+  gap:14px;
 }
 
 /* Drop slots */
@@ -178,7 +185,6 @@ body{
   box-shadow: inset 0 3px 10px rgba(0,0,0,.05);
   display:flex; align-items:center; justify-content:center;
   position:relative;
-  flex:0 0 auto;
 }
 .drop-slot .slot-hint{
   position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
@@ -189,17 +195,14 @@ body{
 
 /* Plus icon */
 .plus-icon{
-  flex:1; display:flex; align-items:center; justify-content:center;
+  width:32px; height:32px; line-height:32px;
+  text-align:center;
   color:#b08749; font-size:22px; font-weight:900; opacity:.6;
 }
 
 /* Forge button */
-.forge-btn{
-  width:100%; margin-top:10px;
-}
-.forge-btn:disabled{
-  opacity:.6; filter:grayscale(30%); cursor:not-allowed;
-}
+.forge-btn{ width:100%; margin-top:10px; }
+.forge-btn:disabled{ opacity:.6; filter:grayscale(30%); cursor:not-allowed; }
 
 /* Smith panel feedback */
 @keyframes smithStrike {
@@ -208,6 +211,7 @@ body{
   100%{box-shadow:0 0 0 rgba(255,208,96,0)}
 }
 #smith.strike{ animation: smithStrike .6s ease-out; }
+@keyframes invShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
 #smith.shake{ animation: invShake .32s; }
 
 /* Trash bin (icon-only) */
@@ -253,10 +257,6 @@ body{
 .key:active{ transform:scale(.96) }
 .key.carried{ outline:2px dashed rgba(0,0,0,.15); outline-offset:2px; }
 
-/* Inventory full shake */
-@keyframes invShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
-.inventory.full { animation:invShake .3s }
-
 /* Popup: simple message + actions */
 .popup{ position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.35); }
 .popup.hidden{ display:none; }
@@ -273,7 +273,7 @@ body{
 .btn.primary{ background:#ffe3a3; border-color:#c9a051; }
 .btn.primary:hover{ background:#ffd777; }
 
-/* Popup: durability / gamble bar */
+/* Gamble bar */
 .dur-card{
   min-width:340px; max-width:88vw; background:#fffdf4; border:2px solid #ead8b3; border-radius:16px;
   box-shadow:0 12px 30px rgba(0,0,0,.25); padding:16px 18px; text-align:center;
@@ -291,9 +291,6 @@ body{
   left:0; transform:translateX(-50%);
 }
 .dur-caption{ font-weight:700; color:#5a3d1e; }
-
-/* Toast (unused) */
-.toast{ margin-top:8px; font-weight:700; color:#3b5d27; text-shadow:0 1px 0 #fff }
 
 /* Accessibility focus */
 .lock:focus-within img, .drop-slot:focus-within, .letter:focus{
