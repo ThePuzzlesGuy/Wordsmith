@@ -354,15 +354,41 @@ function spawnKey(type){
   img.dataset.type = type;
   img.draggable = true;
 
+  let dragGhost = null;
+
   img.addEventListener("dragstart", (e) => {
+    // indicate what we're dragging
     e.dataTransfer.setData("text/plain", img.dataset.type || "key");
     e.dataTransfer.effectAllowed = "move";
+
+    // make a small key preview as the drag image
+    dragGhost = img.cloneNode(true);
+    dragGhost.style.width = "36px";
+    dragGhost.style.height = "36px";
+    dragGhost.style.maxWidth = "36px";
+    dragGhost.style.maxHeight = "36px";
+    dragGhost.style.position = "absolute";
+    dragGhost.style.top = "-1000px";          // keep it off-screen
+    dragGhost.style.left = "-1000px";
+    dragGhost.style.pointerEvents = "none";
+    dragGhost.style.border = "0";             // no border on the ghost
+    document.body.appendChild(dragGhost);
+
+    // center the pointer over the ghost
+    try {
+      e.dataTransfer.setDragImage(dragGhost, 18, 18);
+    } catch (_) {
+      // some older browsers might ignore this—safe to fail
+    }
+
     img.classList.add("dragging");
     document.getElementById('smith')?.classList.add('drag-over');
   });
+
   img.addEventListener("dragend", () => {
     img.classList.remove("dragging");
     document.getElementById('smith')?.classList.remove('drag-over');
+    if (dragGhost) { dragGhost.remove(); dragGhost = null; }
   });
 
   emptySlot.appendChild(img);
