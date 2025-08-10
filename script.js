@@ -15,18 +15,33 @@ let isSelecting = false;
 
 let prizeTileIndex = null;
 
+/* ----- Prizes (single source of truth) ----- */
 const PRIZES = {
   wood:  { id:'wood',  label:'Wood Key',       color:'#D7B48A', icon:'sprites/key_wood.png',  weight:28 },
   stone: { id:'stone', label:'Stone Key',      color:'#C9CCD3', icon:'sprites/key_stone.png', weight:28 },
   gold:  { id:'gold',  label:'Gold Key',       color:'#FFD24A', icon:'sprites/key_gold.png',  weight:23 },
   pick:  { id:'pick',  label:'Lock Pick',      color:'#8C5A34', icon:'sprites/key_pick.png',  weight:12 },
-  lose:  { id:'lose',  label:'Lose a Key',     color:'#F06A6A', icon:null,                     weight: 6 },
+  lose:  { id:'lose',  label:'Lose a Key',     color:'#F06A6A', icon:null,                     weight: 6 }, // total across 3 slots
   solve: { id:'solve', label:'Reveal Scroll',  color:'#7ED4A6', icon:'sprites/scroll.png',     weight: 3 },
 };
 
+/* VISUAL order is 8 equal slices. We will also *pick by slice* using per-slice weight,
+   so the backend odds match your requested percentages. */
 const WHEEL_ORDER = ['wood','lose','stone','solve','gold','lose','pick','lose'];
-const WHEEL_VISUAL = WHEEL_ORDER.map(key => PRIZES[key]);
-const TOTAL_WEIGHT = Object.values(PRIZES).reduce((a,p)=>a+p.weight,0);
+
+/* Build slices: each item carries its own color, icon AND weight.
+   Each "lose" slice is 2% (3×2% = 6%). Others keep their full weights. */
+const SLICES = WHEEL_ORDER.map(id => {
+  const p = PRIZES[id];
+  return {
+    id,
+    label: p.label,
+    color: p.color,
+    icon:  p.icon,
+    weight: id === 'lose' ? 2 : p.weight
+  };
+});
+const TOTAL_SLICE_WEIGHT = SLICES.reduce((a,s)=>a+s.weight,0);
 
 document.addEventListener("DOMContentLoaded", async () => {
   await loadBoards();
@@ -401,7 +416,6 @@ function setupDragAndDrop() {
     area.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
   });
 
-  /* FIXED: forEach syntax */
   [slotA, slotB].forEach((slot) => {
     slot.addEventListener('dragenter', () => slot.classList.add('hover'));
     slot.addEventListener('dragleave', () => slot.classList.remove('hover'));
@@ -713,40 +727,42 @@ function markPrizeTile(){
   tiles[prizeTileIndex].classList.add('prize');
 }
 
+/* Build the wheel from SLICES so colour + icon + outcome always match */
 function buildWheelVisual(){
   const dial  = document.getElementById('wheel-dial');
   const spin  = document.getElementById('wheel-spin');
   if (!dial || !spin) return;
 
-  const N = WHEEL_VISUAL.length;
-  const pct = 100 / N;
-  const stops = WHEEL_VISUAL.map((seg, i) => `${seg.color} ${i*pct}% ${(i+1)*pct}%`).join(', ');
-  dial.style.background = `conic-gradient(from -90deg, ${stops})`;
+  const N = SLICES.length;                 // 8
+  const base = 360 / N;                    // 45°
+  const pct  = 100 / N;
 
+  // Gradient: start from 0deg (to the RIGHT). Each slice is equal size.
+  const stops = SLICES.map((seg, i) => `${seg.color} ${i*pct}% ${(i+1)*pct}%`).join(', ');
+  dial.style.background = `conic-gradient(from 0deg, ${stops})`;
+
+  // Clear old icons and lay new ones at slice centres.
   dial.querySelectorAll('.wheel-icon').forEach(n => n.remove());
-
-  const base = 360 / N;
   const radius = 92;
   for (let i=0;i<N;i++){
-    const seg = WHEEL_VISUAL[i];
-    const centerFromTop = i * base + base/2;
-    const cssAngle = centerFromTop - 90;
+    const seg = SLICES[i];
+    const centerFromRight = i*base + base/2;
 
-    const el = document.createElement('div');
-    el.className = seg.id === 'lose' ? 'wheel-icon badge' : 'wheel-icon';
-    if (seg.id === 'lose'){
-      el.textContent = '−1';
+    const icon = document.createElement('div');
+    icon.className = seg.id === 'lose' ? 'wheel-icon badge' : 'wheel-icon';
+    if (seg.id === 'lose') {
+      icon.textContent = '−1';
     } else if (seg.icon){
       const img = document.createElement('img');
       img.src = seg.icon;
       img.alt = seg.label;
-      el.appendChild(img);
+      icon.appendChild(img);
     }
-    el.style.transform = `translate(-50%,-50%) rotate(${cssAngle}deg) translate(${radius}px) rotate(${-cssAngle}deg)`;
-    dial.appendChild(el);
+    icon.style.transform = `translate(-50%,-50%) rotate(${centerFromRight}deg) translate(${radius}px) rotate(${-centerFromRight}deg)`;
+    dial.appendChild(icon);
   }
 
-  dial.style.transform = 'rotate(0deg)';
+  dial.style.transform = 'rotate(0deg)';   // reset between spins
   spin.disabled = false;
 }
 
@@ -764,30 +780,31 @@ function openPrizeWheel(){
   };
 }
 
+/* Pick a *slice* by weight, then rotate so its centre is under the pointer. */
 function spinWheel(){
   return new Promise(resolve => {
     const dial  = document.getElementById('wheel-dial');
     const wheel = document.getElementById('wheel');
     if (!dial || !wheel) { resolve(); return; }
 
-    let r = Math.random() * TOTAL_WEIGHT;
-    let outcomeId = 'wood';
-    for (const p of Object.values(PRIZES)){
-      if ((r -= p.weight) <= 0){ outcomeId = p.id; break; }
+    // Weighted slice pick
+    let r = Math.random() * TOTAL_SLICE_WEIGHT;
+    let chosenIndex = 0;
+    for (let i=0;i<SLICES.length;i++){
+      r -= SLICES[i].weight;
+      if (r <= 0){ chosenIndex = i; break; }
     }
+    const outcomeId = SLICES[chosenIndex].id;
 
-    const indices = WHEEL_VISUAL
-      .map((seg, i) => seg.id === outcomeId ? i : -1)
-      .filter(i => i !== -1);
-    const chosenIndex = indices[Math.floor(Math.random()*indices.length)];
+    // Spin: our gradient/icons start from RIGHT (0deg).
+    // Pointer is at TOP (90deg). Move chosen centre to 90deg.
+    const N = SLICES.length;        // 8
+    const base = 360 / N;           // 45°
+    const centerFromRight = chosenIndex*base + base/2;
+    const spins = 4 + Math.floor(Math.random()*3); // 4–6 full spins
+    const target = spins*360 + (90 - centerFromRight);
 
-    const N = WHEEL_VISUAL.length;
-    const base = 360 / N;
-    const centerFromTop = chosenIndex * base + base/2;
-    const spins = 4 + Math.floor(Math.random()*3);
-    const target = spins*360 - centerFromTop;
-
-    void dial.offsetWidth;
+    void dial.offsetWidth;          // reflow to restart transition
     dial.style.transform = `rotate(${target}deg)`;
 
     setTimeout(async () => {
