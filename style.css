@@ -170,7 +170,10 @@ body{
 #wheel-canvas{
   display:block; width:min(92vw,600px); height:auto; aspect-ratio:1/1; border-radius:50%;
   background:radial-gradient(circle at 50% 42%,#2a3042,#1a1f2d 64%,#111522 100%); margin:0 auto;
+  transition:opacity .2s ease, visibility .2s ease;
 }
+#wheel-canvas.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+
 .wheel-controls{
   position:absolute; left:50%; transform:translateX(-50%); bottom:8px;
   background:#151821; border:1px solid #242b3a; border-radius:16px; padding:12px 14px;
