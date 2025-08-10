@@ -292,7 +292,12 @@ function endSelect() {
 
       const usedPrize = currentPath.some(el => Number(el.dataset.index) === Number(prizeTileIndex));
       markUsedTiles(currentPath);
-      if (usedPrize) { prizeTileIndex = null; openPrizeWheel(); }
+
+      if (usedPrize) {
+        prizeTileIndex = null;
+        // defer to next microtask so overlays never clash
+        setTimeout(openPrizeWheel, 0);
+      }
     } else {
       invalidWordFeedback(currentPath);
     }
@@ -668,9 +673,10 @@ function shuffle(arr){ for (let i = arr.length - 1; i > 0; i--) { const j = Math
 function markPrizeTile(){
   const tiles = Array.from(document.querySelectorAll('#letter-grid .letter'));
   if (tiles.length === 0) return;
-  const idx = Math.floor(Math.random()*tiles.length);
-  prizeTileIndex = idx;
-  tiles[idx].classList.add('prize');
+  // remove any stale star if we re-entered the same board instance
+  tiles.forEach(t => t.classList.remove('prize'));
+  prizeTileIndex = Math.floor(Math.random()*tiles.length);
+  tiles[prizeTileIndex].classList.add('prize');
 }
 
 function buildWheelVisual(){
