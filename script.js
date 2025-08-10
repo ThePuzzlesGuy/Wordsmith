@@ -14,6 +14,9 @@ let scrolls = 0;
 // guards
 let resolvingLoss = false;
 
+// NEW: robust selection state (fixes “dragging does nothing”)
+let isSelecting = false;
+
 // NEW: prize tile index per board
 let prizeTileIndex = null;
 
@@ -34,6 +37,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupBoard(false);
   setupDragAndDrop();
 
+  // backdrop closes only when not locked
   const pop = document.getElementById('popup');
   pop?.addEventListener('click', (e) => {
     if (e.target.id === 'popup' && pop.dataset.dismiss !== 'locked') hidePopup();
@@ -41,6 +45,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   window.addEventListener('resize', sizeLocksRow);
   updateProgressUI();
+
+  // EXTRA: ensure endSelect always fires across browsers
+  ['mouseup','pointerup','touchend'].forEach(ev =>
+    document.addEventListener(ev, endSelect)
+  );
 });
 
 async function loadBoards() {
@@ -53,6 +62,7 @@ function setupBoard(restartSame=false) {
   resolvingLoss = false;
 
   if (!restartSame) {
+    // new round → mark keys as carried
     document.querySelectorAll('#keys .key').forEach(k => {
       k.dataset.carried = "true";
       k.classList.add('carried');
@@ -68,6 +78,7 @@ function setupBoard(restartSame=false) {
   }
 
   document.getElementById("theme").textContent = currentBoard.theme;
+
   remainingWords = currentBoard.words.map(w => w.toUpperCase());
   validWords = remainingWords.slice();
 
@@ -83,25 +94,14 @@ function setupBoard(restartSame=false) {
     div.dataset.index = i;
     div.dataset.active = "true";
     div.addEventListener("mousedown", startSelect);
+    div.addEventListener("pointerdown", startSelect);   // ← pointer support
     div.addEventListener("mouseenter", continueSelect);
+    div.addEventListener("pointerenter", continueSelect);
     gridEl.appendChild(div);
   }
 
-  // choose a prize tile for this board
   markPrizeTile();
-
   buildDynamicLocks(currentBoard.words);
-
-  document.removeEventListener("mouseup", endSelect);
-  document.addEventListener("mouseup", endSelect);
-}
-
-function markPrizeTile(){
-  const tiles = Array.from(document.querySelectorAll('#letter-grid .letter'));
-  if (tiles.length === 0) return;
-  const activeIdxs = tiles.map((t,i)=>i);
-  prizeTileIndex = activeIdxs[Math.floor(Math.random()*activeIdxs.length)];
-  tiles[prizeTileIndex].classList.add('prize');
 }
 
 function buildDynamicLocks(words) {
@@ -139,7 +139,30 @@ function buildDynamicLocks(words) {
     locksWrap.appendChild(lock);
   });
 
-  sizeLocksRow();
+  sizeLocksRow(); // ensure correct size on init
+}
+
+/* Keep one-row locks; shrink for 8+ (restores previous behaviour) */
+function sizeLocksRow() {
+  const wrap = document.getElementById('locks');
+  if (!wrap) return;
+
+  const count = wrap.children.length;
+  const styles = getComputedStyle(wrap);
+  const gap = parseInt(styles.gap || 18, 10) || 18;
+
+  const BASE = 86, MIN = 48;
+  const targetWidth = 7 * BASE + (7 - 1) * gap;
+
+  let size = BASE;
+  if (count > 7) {
+    size = Math.floor((targetWidth - (count - 1) * gap) / count);
+    size = Math.max(MIN, Math.min(BASE, size));
+  }
+
+  // Set on row AND :root so children reliably read it
+  wrap.style.setProperty('--lock-size', `${size}px`);
+  document.documentElement.style.setProperty('--lock-size', `${size}px`);
 }
 
 /* ========== LOCK INTERACTIONS ========== */
@@ -272,7 +295,9 @@ function startSelect(e) {
   // Failsafe: if you start solving again, recall smith keys to inventory.
   recallForgeKeysToInventory();
 
+  isSelecting = true;
   document.body.classList.add('no-select');
+
   currentPath = [e.target];
   e.target.style.background = "#e8d8b7";
   selectedLetters = [e.target.textContent];
@@ -280,7 +305,7 @@ function startSelect(e) {
 
 function continueSelect(e) {
   if (
-    e.buttons &&
+    isSelecting &&
     currentPath.length > 0 &&
     !currentPath.includes(e.target) &&
     e.target.dataset.active === "true"
@@ -292,6 +317,9 @@ function continueSelect(e) {
 }
 
 function endSelect() {
+  if (!isSelecting) return; // nothing to finalize
+  isSelecting = false;
+
   const word = selectedLetters.join("");
 
   if (selectedLetters.length >= 3 && validWords.includes(word)) {
@@ -304,7 +332,6 @@ function endSelect() {
       const usedPrize = currentPath.some(el => Number(el.dataset.index) === Number(prizeTileIndex));
       markUsedTiles(currentPath);
       if (usedPrize) {
-        // consume prize so it can't trigger twice even if somehow reused
         prizeTileIndex = null;
         openPrizeWheel();
       }
@@ -525,7 +552,7 @@ function doCombine(){
   maybeCheckLose();
 }
 
-/* ========== DURABILITY & GAMBLE (unchanged) ========== */
+/* ========== DURABILITY & GAMBLE ========== */
 function runDurabilityCheck(keyType){
   return new Promise(resolve => {
     if (keyType === 'pick') { resolve(true); return; }
@@ -536,6 +563,7 @@ function runDurabilityCheck(keyType){
 function runGamble(successChance){ return new Promise(resolve => { showGambleBar(successChance, resolve); }); }
 function showGambleBar(successChance, resolve){
   const breakOdds = 1 - successChance;
+
   const dur = document.getElementById('durability');
   const cursor = document.getElementById('dur-cursor');
   const caption = document.getElementById('dur-caption');
@@ -573,7 +601,7 @@ function showGambleBar(successChance, resolve){
   }, 1200);
 }
 
-/* ========== PROGRESSION & FAIL STATE (unchanged) ========== */
+/* ========== PROGRESSION & FAIL STATE ========== */
 function updateProgressUI(){
   const heartEls = Array.from(document.querySelectorAll('#hearts .heart'));
   heartEls.forEach((el, i) => el.classList.toggle('lost', i >= lives));
@@ -582,9 +610,11 @@ function updateProgressUI(){
 
 function maybeCheckLose(){
   if (resolvingLoss) return;
+
   if (isAnyRemainingWordPossible()) return;
   if (canOpenHiddenLock()) return;
 
+  // Lose a life and restart SAME board (keep inventory).
   resolvingLoss = true;
   lives = Math.max(0, lives - 1);
   updateProgressUI();
@@ -618,6 +648,7 @@ function maybeCheckLose(){
 
 function isAnyRemainingWordPossible(){
   if (remainingWords.length === 0) return false;
+
   const counts = {};
   document.querySelectorAll('#letter-grid .letter').forEach(t => {
     if (t.dataset.active === "true") {
@@ -625,12 +656,14 @@ function isAnyRemainingWordPossible(){
       counts[ch] = (counts[ch] || 0) + 1;
     }
   });
+
   const canMake = (word) => {
     const need = {};
     for (const ch of word.toUpperCase()) need[ch] = (need[ch] || 0) + 1;
     for (const k in need) if (!counts[k] || counts[k] < need[k]) return false;
     return true;
   };
+
   return remainingWords.some(canMake);
 }
 
@@ -640,15 +673,18 @@ function canOpenHiddenLock(){
   keys.forEach(k => { const t = k.dataset.type; if (counts[t] !== undefined) counts[t]++; });
 
   if (counts.pick > 0) return true;
+
   const typeNeeded = getHiddenLockType();
   if (!typeNeeded) return false;
 
-  if (typeNeeded === 'wood')  return counts.wood > 0 || pickPossible(counts) > 0;
-  if (typeNeeded === 'stone'){
+  if (typeNeeded === 'wood') {
+    return counts.wood > 0 || pickPossible(counts) > 0;
+  }
+  if (typeNeeded === 'stone') {
     const stonesFromWood = Math.floor(counts.wood / 2);
     return counts.stone > 0 || stonesFromWood > 0 || pickPossible(counts) > 0;
   }
-  if (typeNeeded === 'gold'){
+  if (typeNeeded === 'gold') {
     const stonesFromWood = Math.floor(counts.wood / 2);
     const totalStones = counts.stone + stonesFromWood;
     const goldFromStones = Math.floor(totalStones / 2);
@@ -656,6 +692,7 @@ function canOpenHiddenLock(){
   }
   return false;
 }
+
 function pickPossible(counts){
   const stonesFromWood = Math.floor(counts.wood / 2);
   const totalStones = counts.stone + stonesFromWood;
@@ -664,18 +701,20 @@ function pickPossible(counts){
   const picks = Math.floor(totalGold / 2);
   return picks;
 }
+
 function getHiddenLockType(){
   const el = document.querySelector(`.lock[data-id="${hiddenLockId}"]`);
   return el?.dataset.type || null;
 }
 
-/* ========== POPUPS & UTILS (unchanged) ========== */
+/* ========== POPUPS & UTILS ========== */
 function clearPopupTimer(){
   if (window._popupTimer){
     clearTimeout(window._popupTimer);
     window._popupTimer = null;
   }
 }
+
 function showMessage(msg, opts = {}) {
   const popup = document.getElementById('popup');
   if (!popup) return;
@@ -696,6 +735,7 @@ function showMessage(msg, opts = {}) {
 
   window._popupTimer = setTimeout(() => hidePopup(), duration);
 }
+
 function showContinue(message, buttonLabel="Continue"){
   return new Promise(resolve => {
     const popup = document.getElementById('popup');
@@ -723,13 +763,14 @@ function showContinue(message, buttonLabel="Continue"){
     popup.classList.remove('hidden');
   });
 }
+
 function hidePopup(){
   const p = document.getElementById('popup');
-  if (!p) return;
-  if (p.dataset.dismiss === 'locked') return;
+  if (p?.dataset.dismiss === 'locked') return;
   clearPopupTimer();
-  p.classList.add('hidden');
+  p?.classList.add('hidden');
 }
+
 function confirmChoice(message, yesLabel="Yes", noLabel="No"){
   return new Promise(resolve => {
     const popup = document.getElementById('popup');
@@ -758,6 +799,7 @@ function confirmChoice(message, yesLabel="Yes", noLabel="No"){
     popup.classList.remove('hidden');
   });
 }
+
 function shuffle(arr){
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -767,56 +809,54 @@ function shuffle(arr){
 }
 
 /* ==================== PRIZE WHEEL ==================== */
+function markPrizeTile(){
+  const tiles = Array.from(document.querySelectorAll('#letter-grid .letter'));
+  if (tiles.length === 0) return;
+  const activeIdxs = tiles.map((t,i)=>i);
+  prizeTileIndex = activeIdxs[Math.floor(Math.random()*activeIdxs.length)];
+  tiles[prizeTileIndex].classList.add('prize');
+}
+
 function openPrizeWheel(){
   const wheel = document.getElementById('wheel');
   const dial  = document.getElementById('wheel-dial');
   const cap   = document.getElementById('wheel-caption');
   if (!wheel || !dial || !cap) return;
 
-  // Build the conic gradient based on weights
+  // Build gradient
   let total = WHEEL_SEGMENTS.reduce((a,s)=>a+s.weight,0);
   let acc = 0;
   const stops = WHEEL_SEGMENTS.map(seg => {
-    const start = acc / total * 100;
-    acc += seg.weight;
+    const start = acc / total * 100; acc += seg.weight;
     const end = acc / total * 100;
     return `${seg.color} ${start}% ${end}%`;
   }).join(', ');
   dial.style.background = `conic-gradient(${stops})`;
 
-  // Pick a weighted outcome
+  // Weighted pick
   const r = Math.random() * total;
   let sum = 0, chosenIndex = 0;
-  for (let i=0;i<WHEEL_SEGMENTS.length;i++){
-    sum += WHEEL_SEGMENTS[i].weight;
-    if (r < sum){ chosenIndex = i; break; }
-  }
+  for (let i=0;i<WHEEL_SEGMENTS.length;i++){ sum += WHEEL_SEGMENTS[i].weight; if (r < sum){ chosenIndex = i; break; } }
   const chosen = WHEEL_SEGMENTS[chosenIndex];
 
-  // Compute target angle: center of segment
+  // Target angle (center of segment)
   let cum = 0;
   for (let i=0;i<chosenIndex;i++) cum += WHEEL_SEGMENTS[i].weight;
   const segStart = (cum/total) * 360;
   const segSpan  = (chosen.weight/total) * 360;
   const segCenter= segStart + segSpan/2;
 
-  // We want the pointer at top (0deg) to land on segCenter
-  // Dial rotates clockwise, so rotate by (360*k + (360 - segCenter))
-  const spins = 4 + Math.floor(Math.random()*3); // 4-6 spins
+  const spins = 4 + Math.floor(Math.random()*3);
   const target = spins*360 + (360 - segCenter);
 
   cap.textContent = "Spinning…";
   dial.style.transform = `rotate(0deg)`;
   wheel.classList.remove('hidden');
-
-  // Force reflow so the transition triggers
-  void dial.offsetWidth;
+  void dial.offsetWidth; // reflow
   dial.style.transform = `rotate(${target}deg)`;
 
   setTimeout(async () => {
     cap.textContent = chosen.label;
-
-    // short pause then resolve outcome
     setTimeout(async () => {
       wheel.classList.add('hidden');
       await applyWheelOutcome(chosen.id);
@@ -826,22 +866,13 @@ function openPrizeWheel(){
 }
 
 async function applyWheelOutcome(outcome){
-  if (outcome === 'wood' || outcome === 'stone' || outcome === 'gold' || outcome === 'pick'){
+  if (['wood','stone','gold','pick'].includes(outcome)){
     spawnKey(outcome);
     showMessage(`You won a ${outcome === 'pick' ? 'Lock Pick' : outcome[0].toUpperCase()+outcome.slice(1)+' key'}!`);
     return;
   }
-
-  if (outcome === 'solve'){
-    // Reveal correct lock and advance
-    revealScrollByPower();
-    return;
-  }
-
-  if (outcome === 'lose'){
-    await loseRandomInventoryKey();
-    return;
-  }
+  if (outcome === 'solve'){ revealScrollByPower(); return; }
+  if (outcome === 'lose'){ await loseRandomInventoryKey(); return; }
 }
 
 function revealScrollByPower(){
@@ -888,7 +919,6 @@ function loseRandomInventoryKey(){
         }
         return;
       }
-      // eliminate a random one
       const i = Math.floor(Math.random()*pool.length);
       const x = pool.splice(i,1)[0];
       x.classList.remove('inv-lit');
