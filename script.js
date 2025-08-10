@@ -19,6 +19,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupBoard(/*restartSame=*/false);
   setupDragAndDrop();
 
+  // Only allow backdrop click to close when not "locked" (i.e., not a Continue/Confirm modal)
   const pop = document.getElementById('popup');
   pop?.addEventListener('click', (e) => {
     if (e.target.id === 'popup' && pop.dataset.dismiss !== 'locked') hidePopup();
@@ -264,8 +265,11 @@ function revealScroll(lock){
 function startSelect(e) {
   if (e.target.dataset.active !== "true") return;
   e.preventDefault();
-  document.body.classList.add('no-select');
 
+  // Failsafe: if you start solving again, recall smith keys to inventory.
+  recallForgeKeysToInventory();
+
+  document.body.classList.add('no-select');
   currentPath = [e.target];
   e.target.style.background = "#e8d8b7";
   selectedLetters = [e.target.textContent];
@@ -322,7 +326,7 @@ function invalidWordFeedback(tiles) {
   });
 }
 
-/* ========== KEYS, INVENTORY, SMITHING (COMBINER) ========== */
+/* ========== KEYS, INVENTORY, SMITHING ========== */
 function giveKey(len) {
   const type = len === 3 ? 'wood' : len === 4 ? 'stone' : 'gold';
   spawnKey(type);
@@ -375,12 +379,10 @@ function setupDragAndDrop() {
   const smith = document.getElementById('smith');
   const forgeBtn = document.getElementById('forge-btn');
 
-  // Generic DnD targets
   [slotA, slotB, trash, keyArea, smith].forEach(area => {
     area.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
   });
 
-  // Slot hover cues
   [slotA, slotB].forEach(slot => {
     slot.addEventListener('dragenter', () => slot.classList.add('hover'));
     slot.addEventListener('dragleave', () => slot.classList.remove('hover'));
@@ -394,8 +396,6 @@ function setupDragAndDrop() {
       slot.appendChild(dragging);
       slot.classList.add('has-key');
       updateForgeButton();
-      // auto-combine after a moment if valid
-      setTimeout(() => checkCombinerKeys(/*force*/false), 220);
       maybeCheckLose();
     });
   });
@@ -421,8 +421,37 @@ function setupDragAndDrop() {
     maybeCheckLose();
   });
 
-  // Manual forge button
-  forgeBtn.addEventListener('click', () => checkCombinerKeys(/*force*/true));
+  // Manual forge w/ confirmation
+  forgeBtn.addEventListener('click', async () => {
+    const { a:sa, b:sb } = getCombinerSlots();
+    const k1 = sa.querySelector('.key');
+    const k2 = sb.querySelector('.key');
+    if (!k1 || !k2 || k1.dataset.type !== k2.dataset.type) return;
+
+    const result = nextTier(k1.dataset.type);
+    const label = result === 'pick' ? 'Lock Pick' : (result[0].toUpperCase() + result.slice(1) + ' key');
+
+    const ok = await confirmChoice(`Forge these two keys into a ${label}?`, "Forge", "Cancel");
+    if (!ok) return;
+
+    // Perform the combine
+    doCombine();
+  });
+}
+
+function recallForgeKeysToInventory(){
+  const { a, b } = getCombinerSlots();
+  const keyArea = document.getElementById("keys");
+
+  [a,b].forEach(slot => {
+    const k = slot.querySelector('.key');
+    if (!k) return;
+    const empty = Array.from(keyArea.querySelectorAll('.inv-slot')).find(s => !s.querySelector('.key'));
+    if (empty) empty.appendChild(k); else keyArea.appendChild(k);
+    slot.classList.remove('has-key');
+  });
+
+  updateForgeButton();
 }
 
 function getCombinerSlots(){
@@ -442,38 +471,33 @@ function updateForgeButton(){
   forgeBtn.disabled = !ready;
 }
 
-/* Combine logic — still same rules (wood+wood→stone, stone+stone→gold, gold+gold→pick) */
-function checkCombinerKeys(force=false) {
+function nextTier(type){
+  if (type === 'wood') return 'stone';
+  if (type === 'stone') return 'gold';
+  if (type === 'gold') return 'pick';
+  return null;
+}
+
+function doCombine(){
   const { a:slotA, b:slotB } = getCombinerSlots();
   const k1 = slotA.querySelector('.key');
   const k2 = slotB.querySelector('.key');
   if (!k1 || !k2) { updateForgeButton(); return; }
-
-  const t1 = k1.dataset.type;
-  const t2 = k2.dataset.type;
-
-  if (t1 !== t2) {
-    // mismatch nudge
+  if (k1.dataset.type !== k2.dataset.type) {
     const smith = document.getElementById('smith');
     smith.classList.add('shake');
     setTimeout(() => smith.classList.remove('shake'), 320);
     updateForgeButton();
-    if (!force) return;
-    // if force was clicked and mismatch, just return (no combine)
     return;
   }
 
-  let result = null;
-  if (t1 === "wood") result = "stone";
-  else if (t1 === "stone") result = "gold";
-  else if (t1 === "gold") result = "pick";
+  const result = nextTier(k1.dataset.type);
   if (!result) { updateForgeButton(); return; }
 
   k1.remove(); k2.remove();
   slotA.classList.remove('has-key');
   slotB.classList.remove('has-key');
 
-  // strike flash
   const smith = document.getElementById('smith');
   smith.classList.add('strike');
   setTimeout(() => smith.classList.remove('strike'), 600);
@@ -616,7 +640,7 @@ function isAnyRemainingWordPossible(){
 }
 
 function canOpenHiddenLock(){
-  // include keys in inventory AND keys sitting in smith slots
+  // include keys in inventory AND smith slots
   const keys = document.querySelectorAll('#keys .key, #smith .key');
   const counts = { wood:0, stone:0, gold:0, pick:0 };
   keys.forEach(k => { const t = k.dataset.type; if (counts[t] !== undefined) counts[t]++; });
