@@ -11,7 +11,7 @@
 
   /* Locks sizing */
   --lock-gap: 18px;
-  --lock-size: 86px; /* default */
+  --lock-size: 86px;
 
   /* Smithing layout */
   --smith-slot: 88px;
@@ -74,22 +74,37 @@ body{
 .lock img{ width:100%; height:100%; object-fit:contain; transition:transform .2s; }
 .lock.jiggle img{ animation:jiggle .5s; }
 .lock.failed img{ filter:brightness(.55) }
-@keyframes jiggle{ 0%{transform:rotate(0)} 25%{transform:rotate(-10deg)} 50%{transform:10deg)} 75%{transform:rotate(-5deg)} 100%{transform:rotate(0)} }
+@keyframes jiggle{
+  0%{transform:rotate(0)} 25%{transform:rotate(-10deg)} 50%{transform:rotate(10deg)}
+  75%{transform:rotate(-5deg)} 100%{transform:rotate(0)}
+}
 
 /* ===== Parchment board ===== */
 .board-wrap{
   background:linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,0));
   border-radius:20px; padding:14px; box-shadow: var(--shadow);
+
+  /* NEW: let inner parchment size to content and stay centered */
+  display:flex; justify-content:center;
 }
 .parchment{
   position:relative; padding:18px 18px 22px;
   background: radial-gradient(120% 120% at 50% -10%, #fff5db 0%, var(--beige) 60%, var(--beige-deep) 100%);
   border-radius:24px; border:3px solid rgba(0,0,0,.15);
   box-shadow: inset 0 10px 25px rgba(0,0,0,.12);
+
+  /* NEW: hug the grid, don’t stretch full width */
+  display:inline-block;
+  margin:0 auto;
 }
 
 /* Grid */
-#letter-grid, #letter-grid.grid{ display:grid; gap:10px; justify-content:center; }
+#letter-grid,
+#letter-grid.grid{
+  /* NEW: inline-grid = element width matches tile area exactly */
+  display:inline-grid; gap:10px; justify-content:center;
+}
+
 .letter{
   width:74px; height:74px; border-radius:16px;
   background:#f6e7c5; border:2px solid #7a5836; color:#2b1c12;
@@ -133,26 +148,40 @@ body{
 .sidebar{ display:flex; flex-direction:column; gap:16px; }
 .card{ background:var(--card); border-radius:16px; padding:14px; box-shadow: var(--shadow); border:2px solid rgba(0,0,0,.08); }
 
-/* Progress/Theme/Legend (unchanged styles omitted for brevity) */
+/* Progress card */
 .progress-card{ display:grid; grid-template-columns:1fr auto; align-items:center; gap:10px; background:#fff8e8; border-color:#e3cfa6; }
 .hearts{ display:flex; gap:8px; }
 .heart{ width:24px; height:24px; object-fit:contain; transition:filter .2s, opacity .2s; }
 .heart.lost{ filter:grayscale(1) brightness(.6); opacity:.7; }
 .scrolls{ display:flex; align-items:center; gap:10px; justify-self:end; }
-.scroll-icon{ width:28px; height:28px; transform: rotate(45deg); }
+
+/* NEW: slimmer scroll icon */
+.scroll-icon{
+  width:22px; height:22px; object-fit:contain;
+  transform: none;
+}
 .scroll-count{ font-weight:900; color:#5a3d1e; font-size:18px; }
 
+/* Theme card */
 .theme-card{ display:flex; flex-direction:column; gap:6px; background:#fff8e8; border-color:#e3cfa6; }
 .theme-label{ font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#8a6a3e; }
 .theme-value{ font-size:18px; font-weight:900; color:#5a3d1e; }
 
+/* Legend */
 .legend ul{ list-style:none; padding:0; margin:0; display:grid; gap:8px; }
 .legend li{ display:flex; align-items:center; gap:10px; font-weight:700; color:#4a3826; }
 .legend-key{ width:22px; height:22px; object-fit:contain; }
 
 /* ===== Smithing panel ===== */
 .smith.card{ display:flex; flex-direction:column; gap:12px; }
-.smith-card{ background:linear-gradient(180deg,#fff9eb,#f6ebcf); border:2px solid #d6c19a; border-radius:16px; padding:14px; box-shadow: var(--shadow); overflow:hidden; }
+.smith-card{
+  background:linear-gradient(180deg,#fff9eb,#f6ebcf);
+  border:2px solid #d6c19a;
+  border-radius:16px;
+  padding:14px;
+  box-shadow: var(--shadow);
+  overflow:hidden;
+}
 .smith-top{
   display:grid;
   grid-template-columns: var(--smith-slot) var(--smith-plus) var(--smith-slot);
@@ -221,7 +250,7 @@ body{
 .btn.primary{ background:#ffe3a3; border-color:#c9a051; }
 .btn.primary:hover{ background:#ffd777; }
 
-/* Gamble bar (unchanged) */
+/* Gamble bar */
 .dur-card{ min-width:340px; max-width:88vw; background:#fffdf4; border:2px solid #ead8b3; border-radius:16px; box-shadow:0 12px 30px rgba(0,0,0,.25); padding:16px 18px; text-align:center; }
 .dur-title{ font-weight:900; color:#5a3d1e; margin-bottom:10px; }
 .dur-bar{ position:relative; height:26px; border-radius:14px; overflow:hidden; border:2px solid #ccb487; background:#f8f0d9; display:flex; width:320px; margin:0 auto 8px; }
@@ -236,9 +265,7 @@ body{
   box-shadow:0 12px 30px rgba(0,0,0,.25); padding:16px 18px; text-align:center;
 }
 .wheel-title{ font-weight:900; color:#5a3d1e; margin-bottom:10px; }
-.wheel-box{
-  position:relative; width:280px; height:280px; margin:0 auto 10px;
-}
+.wheel-box{ position:relative; width:280px; height:280px; margin:0 auto 10px; }
 .wheel-dial{
   position:absolute; inset:0;
   border-radius:50%;
