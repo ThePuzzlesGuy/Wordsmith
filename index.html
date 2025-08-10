@@ -35,7 +35,7 @@
 
     <!-- Right column -->
     <aside class="sidebar">
-      <!-- NEW: Progress (hearts + scrolls) -->
+      <!-- Progress (hearts + scrolls) -->
       <div class="card progress-card">
         <div class="hearts" id="hearts">
           <img src="sprites/heart.png" alt="" class="heart">
@@ -63,12 +63,14 @@
 
       <div class="combine card">
         <div class="slot-stack">
-          <div id="combiner" class="drop-zone combiner-visual">
+          <!-- NEW: Rune Forge skin -->
+          <div id="combiner" class="drop-zone combiner-visual forge">
             <div class="slot a" data-slot="a"></div>
             <div class="plus">+</div>
             <div class="slot b" data-slot="b"></div>
           </div>
-          <div id="trash" class="drop-zone trash-visual">
+          <!-- NEW: Scrap Bin skin -->
+          <div id="trash" class="drop-zone trash-visual scrap">
             <span class="trash-icon">🗑️</span>
           </div>
         </div>
@@ -95,7 +97,7 @@
   </main>
 
   <!-- Popup: messages + actions -->
-  <div id="popup" class="popup hidden">
+  <div id="popup" class="popup hidden" data-dismiss="">
     <div class="popup-card">
       <div id="popup-text"></div>
       <div id="popup-actions" class="popup-actions"></div>
