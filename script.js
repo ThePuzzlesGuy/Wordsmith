@@ -350,8 +350,13 @@ function spawnKey(type){
     e.dataTransfer.setData("text/plain", img.dataset.type || "key");
     e.dataTransfer.effectAllowed = "move";
     img.classList.add("dragging");
+    // visual hint on the forge while dragging
+    document.getElementById('combiner')?.classList.add('drag-over');
   });
-  img.addEventListener("dragend", () => img.classList.remove("dragging"));
+  img.addEventListener("dragend", () => {
+    img.classList.remove("dragging");
+    document.getElementById('combiner')?.classList.remove('drag-over');
+  });
 
   emptySlot.appendChild(img);
 }
@@ -369,9 +374,21 @@ function setupDragAndDrop() {
   const trash = document.getElementById("trash");
   const keyArea = document.getElementById("keys");
   const { a:slotA, b:slotB } = getCombinerSlots();
+  const comb = document.getElementById('combiner');
 
-  [slotA, slotB, trash, keyArea].forEach(area => {
+  [slotA, slotB, trash, keyArea, comb].forEach(area => {
     area.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
+  });
+
+  // forge highlight when hovering it with a key
+  ['dragenter','dragover'].forEach(ev => {
+    comb.addEventListener(ev, e => {
+      e.preventDefault();
+      comb.classList.add('drag-over');
+    });
+  });
+  ['dragleave','drop'].forEach(ev => {
+    comb.addEventListener(ev, () => comb.classList.remove('drag-over'));
   });
 
   [slotA, slotB].forEach(slot => {
@@ -518,7 +535,6 @@ function maybeCheckLose(){
   if (isAnyRemainingWordPossible()) return;
   if (canOpenHiddenLock()) return;
 
-  // Lose a life and restart SAME board (keep inventory).
   resolvingLoss = true;
   lives = Math.max(0, lives - 1);
   updateProgressUI();
@@ -540,7 +556,6 @@ function maybeCheckLose(){
       resolvingLoss = false;
     }, 1200);
   } else {
-    // Show Continue modal; after click, retry same board
     showContinue(
       "Oh no! You've lost a heart.\nNo valid words, or keys remaining.\nThe scroll is now behind a new lock-\ntry and find it before you use all 3 hearts!",
       "Continue"
@@ -651,7 +666,7 @@ function showContinue(message, buttonLabel="Continue"){
     const actions = document.getElementById('popup-actions');
     if (!popup || !txt || !actions) { resolve(); return; }
 
-    clearPopupTimer();              // kill any previous auto-hide
+    clearPopupTimer();
     txt.textContent = message;
     actions.innerHTML = "";
 
@@ -661,13 +676,13 @@ function showContinue(message, buttonLabel="Continue"){
 
     btn.addEventListener('click', () => {
       popup.classList.add('hidden');
-      popup.dataset.dismiss = "";   // unlock backdrop for normal popups
+      popup.dataset.dismiss = "";
       resolve();
     });
 
     actions.appendChild(btn);
 
-    popup.dataset.dismiss = "locked"; // disable backdrop click-to-close
+    popup.dataset.dismiss = "locked";
     popup.classList.remove('hidden');
   });
 }
@@ -675,7 +690,6 @@ function showContinue(message, buttonLabel="Continue"){
 function hidePopup(){
   const p = document.getElementById('popup');
   if (!p) return;
-  // Don’t hide if a modal is locked open
   if (p.dataset.dismiss === 'locked') return;
   clearPopupTimer();
   p.classList.add('hidden');
@@ -688,7 +702,7 @@ function confirmChoice(message, yesLabel="Yes", noLabel="No"){
     const actions = document.getElementById('popup-actions');
     if (!popup || !txt || !actions) { resolve(false); return; }
 
-    clearPopupTimer();              // no auto-hide during choice
+    clearPopupTimer();
     txt.textContent = message;
     actions.innerHTML = "";
 
