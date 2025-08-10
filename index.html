@@ -63,27 +63,26 @@
 
       <div class="combine card">
         <div class="slot-stack">
-          <!-- NEW: Rune Forge skin -->
-          <div id="combiner" class="drop-zone combiner-visual forge">
+          <!-- Rune Forge combiner -->
+          <div id="combiner" class="drop-zone combiner-visual forge" aria-label="Combine two matching keys">
             <div class="slot a" data-slot="a"></div>
             <div class="plus">+</div>
             <div class="slot b" data-slot="b"></div>
           </div>
-          <!-- NEW: Scrap Bin skin -->
-          <div id="trash" class="drop-zone trash-visual scrap">
+          <!-- Trash can (no label) -->
+          <div id="trash" class="drop-zone trash-visual scrap" aria-label="Trash">
             <span class="trash-icon">🗑️</span>
           </div>
         </div>
       </div>
     </aside>
 
-    <!-- Inventory dock: fixed to left column and centered under board -->
+    <!-- Inventory dock -->
     <footer class="inventory-dock">
       <div id="inventory" class="inventory">
         <div id="inventory-ui">
           <div class="inventory-section">
             <div id="keys" class="key-grid">
-              <!-- 5 fixed slots -->
               <div class="inv-slot"></div>
               <div class="inv-slot"></div>
               <div class="inv-slot"></div>
@@ -117,7 +116,6 @@
     </div>
   </div>
 
-  <!-- Bottom message (unused) -->
   <div id="message" class="toast" style="display:none;"></div>
 
   <script src="script.js"></script>
