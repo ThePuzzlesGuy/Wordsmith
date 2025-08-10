@@ -32,7 +32,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.addEventListener(ev, endSelect)
   );
 
-  // Init wheel + install image fallbacks (handles legend/hearts if path differs)
+  // Init wheel + path fallbacks
   initPrizeWheel();
   installImageFallbacks();
 });
@@ -45,7 +45,6 @@ function installImageFallbacks(){
     const file = src.split('/').pop();
     if (!file) return;
 
-    // If currently pointing at sprites/, try root. If root, try sprites/.
     if (src.includes('sprites/')) {
       img.onerror = null;
       img.src = file;
@@ -55,14 +54,12 @@ function installImageFallbacks(){
     }
   };
 
-  // For any existing <img>, attempt fallback on error or if already broken.
   document.querySelectorAll('img').forEach(img => {
     img.addEventListener('error', () => tryResolve(img));
     if (img.complete && img.naturalWidth === 0) tryResolve(img);
   });
 }
 
-// Create an <img> with automatic fallback: sprites/<file> -> <file>
 function createSpriteImg(file, alt = ''){
   const img = new Image();
   img.alt = alt;
@@ -81,14 +78,12 @@ function setupBoard(restartSame=false) {
   resolvingLoss = false;
 
   if (!restartSame) {
-    // carry keys forward visually
     document.querySelectorAll('#keys .key').forEach(k => {
       k.dataset.carried = "true";
       k.classList.add('carried');
     });
   }
 
-  // pick/rotate board
   if (!(restartSame && currentBoard)) {
     let pool = boards.filter((_, i) => !completedBoards.includes(i));
     if (pool.length === 0) { completedBoards = []; pool = boards.slice(); }
@@ -367,7 +362,6 @@ function markUsedTiles(tiles) {
     el.classList.add("used");
   });
 
-  // trigger wheel if this selection used the vault tile
   if (vaultIndex !== -1 && tiles.some(el => Number(el.dataset.index) === Number(vaultIndex))) {
     const grid = document.getElementById('letter-grid');
     const badge = grid && grid.querySelector('.vault-badge');
@@ -595,7 +589,7 @@ function runDurabilityCheck(keyType){
 function runGamble(successChance){ return new Promise(resolve => { showGambleBar(successChance, resolve); }); }
 function showGambleBar(successChance, resolve){
   const breakOdds = 1 - successChance;
-  const dur = document.getElementById('durability'); // if null, we gracefully no-op
+  const dur = document.getElementById('durability-popup');
   const cursor = document.getElementById('dur-cursor');
   const caption = document.getElementById('dur-caption');
   const red = document.querySelector('.dur-red');
@@ -785,7 +779,7 @@ function placeVaultIcon(){
 }
 
 // ----- Prize Wheel implementation -----
-let wheelSpinsPending = 0;
+let spinsLeft = 0; // exact number of spins available while overlay is open
 
 function initPrizeWheel(){
   const overlay = document.getElementById('wheel-overlay');
@@ -795,12 +789,11 @@ function initPrizeWheel(){
   const ctx = canvas.getContext('2d');
   const R = canvas.width/2;
   const C = {x:R, y:R};
-  const POINTER_ANGLE = -Math.PI/2; // point upward
+  const POINTER_ANGLE = -Math.PI/2;
 
   const spinBtn = document.getElementById('spinBtn');
   const closeBtn = document.getElementById('wheelCloseBtn');
   const safeDoor = document.getElementById('safeDoor');
-  const prizeImg = document.getElementById('prizeImg');
 
   const SPRITES={
     "Gold Key":"key_gold.png",
@@ -850,7 +843,6 @@ function initPrizeWheel(){
     bg.addColorStop(0,"#2b3246"); bg.addColorStop(1,"#0f1320");
     ctx.fillStyle=bg; ctx.beginPath(); ctx.arc(C.x,C.y,R,0,Math.PI*2); ctx.fill();
 
-    // dial ticks
     ctx.lineWidth=R*0.06; ctx.strokeStyle="#3a4256"; ctx.beginPath(); ctx.arc(C.x,C.y,R*0.82,0,Math.PI*2); ctx.stroke();
     const rOuter=R*0.78;
     for(let i=0;i<100;i++){
@@ -862,7 +854,6 @@ function initPrizeWheel(){
       ctx.beginPath(); ctx.moveTo(ix,iy); ctx.lineTo(ox,oy); ctx.stroke();
     }
 
-    // center hub
     const hub=ctx.createRadialGradient(C.x-10,C.y-10,10,C.x,C.y,R*0.45);
     hub.addColorStop(0,"#cdd5df"); hub.addColorStop(1,"#6c778c");
     ctx.fillStyle=hub; ctx.beginPath(); ctx.arc(C.x,C.y,R*0.36,0,Math.PI*2); ctx.fill();
@@ -885,7 +876,10 @@ function initPrizeWheel(){
 
     const start=performance.now(), dur=3800;
     const ease=t=>1-Math.pow(1-t,3);
-    spinning=true; spinBtn.disabled=true; safeDoor.classList.remove("open","show"); canvas.classList.add('showing'); prizeImg.removeAttribute("src");
+    spinning=true;
+    spinBtn.disabled=true;
+    safeDoor.classList.remove("open","show");
+    canvas.classList.remove('hidden');
 
     (function loop(now){
       const t = Math.max(0, Math.min(1, (now-start)/dur));
@@ -897,37 +891,79 @@ function initPrizeWheel(){
   }
 
   function revealPrize(p){
-    // Use sprite helper so it also falls back root<->sprites
-    const img = createSpriteImg(SPRITES[p.label], p.label);
-    prizeImg.replaceWith(img);
-    img.id = 'prizeImg';
+    // swap prize image with fallback-aware sprite
+    const newImg = createSpriteImg(SPRITES[p.label], p.label);
+    newImg.id = 'prizeImg';
+    const prev = document.getElementById('prizeImg');
+    if (prev) prev.replaceWith(newImg);
 
-    canvas.classList.remove("showing");
+    // hide the wheel while the door is open
+    canvas.classList.add("hidden");
     safeDoor.classList.add("show");
     requestAnimationFrame(()=>safeDoor.classList.add("open"));
+
+    // apply the prize immediately
     applyPrize(p.label);
+    updateButtons();
   }
 
   function openOverlay(){
-    overlay.classList.remove('hidden'); overlay.setAttribute('aria-hidden','false'); draw();
-    spinBtn.textContent = 'Spin'; closeBtn.style.display = 'none';
+    spinsLeft = 1;            // exactly one spin for a new vault trigger
+    overlay.classList.remove('hidden');
+    overlay.setAttribute('aria-hidden','false');
+    canvas.classList.remove('hidden');
+    safeDoor.classList.remove('open','show');
+    draw();
+    updateButtons();
   }
   function closeOverlay(){
-    overlay.classList.add('hidden'); overlay.setAttribute('aria-hidden','true');
+    overlay.classList.add('hidden');
+    overlay.setAttribute('aria-hidden','true');
+  }
+
+  function updateButtons(){
+    if (safeDoor.classList.contains('open')) {
+      // Door open: either allow another spin or let them close
+      if (spinsLeft > 0) {
+        spinBtn.textContent = 'Spin again';
+        spinBtn.disabled = false;
+        closeBtn.style.display = 'none';
+      } else {
+        spinBtn.textContent = 'Spin';
+        spinBtn.disabled = true;
+        closeBtn.style.display = 'inline-flex';
+      }
+    } else {
+      // Door closed: ready to spin if we have spins
+      spinBtn.textContent = 'Spin';
+      spinBtn.disabled = spinsLeft <= 0;
+      closeBtn.style.display = 'none';
+    }
   }
 
   spinBtn.addEventListener('click', ()=>{
-    if(spinning) return;
-    if (safeDoor.classList.contains('open')){
-      if (wheelSpinsPending>0){ safeDoor.classList.remove('open','show'); draw(); spinBtn.disabled=false; spinBtn.textContent='Spin'; return; }
-      else return;
+    if (spinning) return;
+
+    // If door is open and we have spins left, close door and prep for next spin
+    if (safeDoor.classList.contains('open')) {
+      if (spinsLeft > 0) {
+        safeDoor.classList.remove('open','show');
+        canvas.classList.remove('hidden');
+        updateButtons();
+      }
+      return;
     }
+
+    if (spinsLeft <= 0) return; // safety
+    spinsLeft -= 1;             // consume a spin
     const i = pickWeightedIndex();
     spinToIndex(i);
+    updateButtons();
   });
+
   closeBtn.addEventListener('click', closeOverlay);
 
-  window.openPrizeWheel = function(){ wheelSpinsPending = Math.max(1, wheelSpinsPending); openOverlay(); };
+  window.openPrizeWheel = function(){ openOverlay(); };
 
   draw();
 }
@@ -940,24 +976,13 @@ function applyPrize(label){
     case 'Gold Key': spawnKey('gold'); break;
     case 'Stone Key': spawnKey('stone'); break;
     case 'Wooden Key': spawnKey('wood'); break;
-    case 'Reroll': wheelSpinsPending += 1; break;
-    case '+1 Spin': wheelSpinsPending += 1; break;
+    case 'Reroll': spinsLeft += 1; break;
+    case '+1 Spin': spinsLeft += 1; break;
     case 'Reveal Hint': openRandomWrong(1); break;
     case 'Scroll Peek': peekScroll(); break;
     case 'Combine 2 Keys': combineTwoKeys(); break;
     case 'Lose a Key': loseRandomKey(); break;
     default: break;
-  }
-
-  const spinBtn = document.getElementById('spinBtn');
-  const closeBtn = document.getElementById('wheelCloseBtn');
-  if (wheelSpinsPending>0){
-    wheelSpinsPending -= 1;
-    spinBtn.textContent = 'Spin again';
-    closeBtn.style.display = 'none';
-  } else {
-    spinBtn.textContent = 'Spin';
-    closeBtn.style.display = 'inline-flex';
   }
 }
 
