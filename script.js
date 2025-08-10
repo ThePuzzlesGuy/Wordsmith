@@ -19,7 +19,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupBoard(/*restartSame=*/false);
   setupDragAndDrop();
 
-  // Only allow backdrop click to close when not "locked" (i.e., not a Continue/Confirm modal)
   const pop = document.getElementById('popup');
   pop?.addEventListener('click', (e) => {
     if (e.target.id === 'popup' && pop.dataset.dismiss !== 'locked') hidePopup();
@@ -323,7 +322,7 @@ function invalidWordFeedback(tiles) {
   });
 }
 
-/* ========== KEYS, INVENTORY, COMBINER ========== */
+/* ========== KEYS, INVENTORY, SMITHING (COMBINER) ========== */
 function giveKey(len) {
   const type = len === 3 ? 'wood' : len === 4 ? 'stone' : 'gold';
   spawnKey(type);
@@ -350,12 +349,11 @@ function spawnKey(type){
     e.dataTransfer.setData("text/plain", img.dataset.type || "key");
     e.dataTransfer.effectAllowed = "move";
     img.classList.add("dragging");
-    // visual hint on the forge while dragging
-    document.getElementById('combiner')?.classList.add('drag-over');
+    document.getElementById('smith')?.classList.add('drag-over');
   });
   img.addEventListener("dragend", () => {
     img.classList.remove("dragging");
-    document.getElementById('combiner')?.classList.remove('drag-over');
+    document.getElementById('smith')?.classList.remove('drag-over');
   });
 
   emptySlot.appendChild(img);
@@ -374,33 +372,30 @@ function setupDragAndDrop() {
   const trash = document.getElementById("trash");
   const keyArea = document.getElementById("keys");
   const { a:slotA, b:slotB } = getCombinerSlots();
-  const comb = document.getElementById('combiner');
+  const smith = document.getElementById('smith');
+  const forgeBtn = document.getElementById('forge-btn');
 
-  [slotA, slotB, trash, keyArea, comb].forEach(area => {
+  // Generic DnD targets
+  [slotA, slotB, trash, keyArea, smith].forEach(area => {
     area.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
   });
 
-  // forge highlight when hovering it with a key
-  ['dragenter','dragover'].forEach(ev => {
-    comb.addEventListener(ev, e => {
-      e.preventDefault();
-      comb.classList.add('drag-over');
-    });
-  });
-  ['dragleave','drop'].forEach(ev => {
-    comb.addEventListener(ev, () => comb.classList.remove('drag-over'));
-  });
-
+  // Slot hover cues
   [slotA, slotB].forEach(slot => {
+    slot.addEventListener('dragenter', () => slot.classList.add('hover'));
+    slot.addEventListener('dragleave', () => slot.classList.remove('hover'));
     slot.addEventListener("drop", e => {
       e.preventDefault();
+      slot.classList.remove('hover');
       const dragging = document.querySelector(".dragging");
       if (!dragging) return;
       if (slot.querySelector('.key')) return;
 
       slot.appendChild(dragging);
       slot.classList.add('has-key');
-      checkCombinerKeys();
+      updateForgeButton();
+      // auto-combine after a moment if valid
+      setTimeout(() => checkCombinerKeys(/*force*/false), 220);
       maybeCheckLose();
     });
   });
@@ -409,6 +404,7 @@ function setupDragAndDrop() {
     e.preventDefault();
     document.querySelectorAll(".dragging").forEach(k => k.remove());
     [slotA, slotB].forEach(s => s.classList.toggle('has-key', !!s.querySelector('.key')));
+    updateForgeButton();
     maybeCheckLose();
   });
 
@@ -421,34 +417,66 @@ function setupDragAndDrop() {
     if (empty) empty.appendChild(dragging); else keyArea.appendChild(dragging);
 
     [slotA, slotB].forEach(s => s.classList.toggle('has-key', !!s.querySelector('.key')));
+    updateForgeButton();
     maybeCheckLose();
   });
+
+  // Manual forge button
+  forgeBtn.addEventListener('click', () => checkCombinerKeys(/*force*/true));
 }
 
-function checkCombinerKeys() {
+function getCombinerSlots(){
+  const root = document.getElementById('smith');
+  return {
+    a: root.querySelector('.drop-slot[data-slot="a"]'),
+    b: root.querySelector('.drop-slot[data-slot="b"]')
+  };
+}
+
+function updateForgeButton(){
+  const forgeBtn = document.getElementById('forge-btn');
+  const { a, b } = getCombinerSlots();
+  const k1 = a.querySelector('.key');
+  const k2 = b.querySelector('.key');
+  const ready = !!(k1 && k2 && k1.dataset.type === k2.dataset.type);
+  forgeBtn.disabled = !ready;
+}
+
+/* Combine logic — still same rules (wood+wood→stone, stone+stone→gold, gold+gold→pick) */
+function checkCombinerKeys(force=false) {
   const { a:slotA, b:slotB } = getCombinerSlots();
   const k1 = slotA.querySelector('.key');
   const k2 = slotB.querySelector('.key');
-  if (!k1 || !k2) return;
+  if (!k1 || !k2) { updateForgeButton(); return; }
 
   const t1 = k1.dataset.type;
   const t2 = k2.dataset.type;
-  if (t1 !== t2) return;
+
+  if (t1 !== t2) {
+    // mismatch nudge
+    const smith = document.getElementById('smith');
+    smith.classList.add('shake');
+    setTimeout(() => smith.classList.remove('shake'), 320);
+    updateForgeButton();
+    if (!force) return;
+    // if force was clicked and mismatch, just return (no combine)
+    return;
+  }
 
   let result = null;
   if (t1 === "wood") result = "stone";
   else if (t1 === "stone") result = "gold";
   else if (t1 === "gold") result = "pick";
-  if (!result) return;
+  if (!result) { updateForgeButton(); return; }
 
   k1.remove(); k2.remove();
   slotA.classList.remove('has-key');
   slotB.classList.remove('has-key');
 
-  // Rune Forge fuse pulse + spark
-  const comb = document.getElementById('combiner');
-  comb?.classList.add('forge-fuse');
-  setTimeout(() => comb?.classList.remove('forge-fuse'), 900);
+  // strike flash
+  const smith = document.getElementById('smith');
+  smith.classList.add('strike');
+  setTimeout(() => smith.classList.remove('strike'), 600);
 
   if (result === 'pick') {
     spawnKey('pick');
@@ -458,11 +486,9 @@ function checkCombinerKeys() {
     const label = result.charAt(0).toUpperCase() + result.slice(1);
     showMessage(`You've successfully crafted a ${label} key!`);
   }
-}
 
-function getCombinerSlots(){
-  const c = document.getElementById('combiner');
-  return { a: c.querySelector('.slot.a'), b: c.querySelector('.slot.b') };
+  updateForgeButton();
+  maybeCheckLose();
 }
 
 /* ========== DURABILITY & GAMBLE ========== */
@@ -535,6 +561,7 @@ function maybeCheckLose(){
   if (isAnyRemainingWordPossible()) return;
   if (canOpenHiddenLock()) return;
 
+  // Lose a life and restart SAME board (keep inventory).
   resolvingLoss = true;
   lives = Math.max(0, lives - 1);
   updateProgressUI();
@@ -589,7 +616,8 @@ function isAnyRemainingWordPossible(){
 }
 
 function canOpenHiddenLock(){
-  const keys = document.querySelectorAll('#keys .key, #combiner .key');
+  // include keys in inventory AND keys sitting in smith slots
+  const keys = document.querySelectorAll('#keys .key, #smith .key');
   const counts = { wood:0, stone:0, gold:0, pick:0 };
   keys.forEach(k => { const t = k.dataset.type; if (counts[t] !== undefined) counts[t]++; });
 
@@ -639,8 +667,6 @@ function clearPopupTimer(){
 function showMessage(msg, opts = {}) {
   const popup = document.getElementById('popup');
   if (!popup) return;
-
-  // If a modal (Continue/Confirm) is up, don't stomp it.
   if (popup.dataset.dismiss === 'locked') return;
 
   const txt = document.getElementById('popup-text');
@@ -648,8 +674,8 @@ function showMessage(msg, opts = {}) {
 
   clearPopupTimer();
   txt.textContent = msg;
-  actions.innerHTML = "";           // no buttons
-  popup.dataset.dismiss = "";       // allow backdrop close
+  actions.innerHTML = "";
+  popup.dataset.dismiss = "";
   popup.classList.remove('hidden');
 
   const duration = (opts && typeof opts.duration === 'number')
