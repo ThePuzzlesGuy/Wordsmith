@@ -18,7 +18,6 @@
 }
 
 *{box-sizing:border-box}
-
 body{
   margin:0;
   font-family: ui-rounded, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
@@ -72,16 +71,15 @@ body{
 .letter.invalid{ animation:shake .35s }
 @keyframes shake{ 0%{transform:translateX(0)} 25%{transform:translateX(-5px)} 50%{transform:translateX(5px)} 75%{transform:translateX(-3px)} 100%{transform:translateX(0)} }
 
-/* Prize tile badge */
+/* Prize tile badge — wheel symbol */
 .letter.prize{ position:relative; background-image: radial-gradient(40px 40px at 14px 12px, rgba(255,210,82,.55), transparent 40%); }
 .letter.prize::after{
-  content:"★"; position:absolute; top:-6px; left:-6px; width:24px; height:24px; border-radius:50%;
+  content:"⟳"; position:absolute; top:-6px; left:-6px; width:24px; height:24px; border-radius:50%;
   display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:900; color:#7a4e07;
   background: radial-gradient(circle at 30% 30%, #fff4c0, #ffd25a);
   border:2px solid #b98721; box-shadow:0 2px 6px rgba(0,0,0,.25);
 }
 
-/* Prevent selecting while dragging */
 #letter-grid, #letter-grid .letter{ user-select:none; -webkit-user-select:none; -ms-user-select:none; -moz-user-select:none; -webkit-tap-highlight-color:transparent; touch-action:none; }
 .no-select{ user-select:none!important; -webkit-user-select:none!important; }
 #letter-grid img, #locks img{ -webkit-user-drag:none; user-drag:none; }
@@ -160,14 +158,14 @@ body{
 .dur-cursor{ position:absolute; top:-6px; width:24px; height:38px; border-radius:6px; background:#fff; border:2px solid #a97b2a; box-shadow:0 4px 10px rgba(0,0,0,.2); left:0; transform:translateX(-50%); }
 .dur-caption{ font-weight:700; color:#5a3d1e; }
 
-/* ===== Prize Wheel (redesigned) ===== */
-.wheel-card{
-  min-width:380px; max-width:88vw;
+/* =========== NEW PRIZE WHEEL =========== */
+.pw-card{
+  min-width:360px; max-width:88vw;
   background:#fffdf4; border:2px solid #ead8b3; border-radius:16px;
   box-shadow:0 12px 30px rgba(0,0,0,.25); padding:16px 18px; text-align:center;
 }
-.wheel-box{ position:relative; width:300px; height:300px; margin:0 auto 14px; }
-.wheel-dial{
+.pw-box{ position:relative; width:300px; height:300px; margin:0 auto 14px; }
+.pw-dial{
   position:absolute; inset:0; border-radius:50%;
   border:8px solid #e5d3a8;
   background:#f6f0dc;
@@ -175,44 +173,31 @@ body{
   transform:rotate(0deg);
   transition: transform 3.2s cubic-bezier(.17,.85,.2,1);
 }
-/* dividers + inner hub */
-.wheel-dial::before{
-  content:""; position:absolute; inset:0; border-radius:50%;
-  background: repeating-conic-gradient(
-    rgba(255,255,255,.22) 0deg,
-    rgba(255,255,255,.22) 2deg,
-    transparent 2deg,
-    transparent 45deg
-  );
-  pointer-events:none;
-}
-.wheel-dial::after{
+.pw-dial::after{
   content:""; position:absolute; top:50%; left:50%;
   width:28px; height:28px; transform:translate(-50%,-50%);
   border-radius:50%; background: radial-gradient(circle at 30% 30%, #fff8e4, #eed6a8);
   border:3px solid #d3bb84; box-shadow: inset 0 2px 6px rgba(0,0,0,.22);
   pointer-events:none;
 }
-.wheel-dial .wheel-icon{
-  position:absolute; top:50%; left:50%;
-  width:40px; height:40px; display:flex; align-items:center; justify-content:center;
-  transform:translate(-50%,-50%);
+.pw-icon{
+  position:absolute; width:42px; height:42px;
+  transform: translate(-50%,-50%);
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.2));
 }
-.wheel-dial .wheel-icon img{ width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 1px 1px rgba(0,0,0,.2)); }
-.wheel-dial .wheel-icon.badge{
-  width:34px; height:34px; border-radius:50%; background:#ef6a6a; border:2px solid #b74646;
-  color:#fff; font-weight:900; font-size:16px; box-shadow:0 1px 4px rgba(0,0,0,.25);
+.pw-icon.badge{
+  width:34px; height:34px; border-radius:50%;
+  background:#ef6a6a; border:2px solid #b74646; color:#fff;
+  display:flex; align-items:center; justify-content:center; font-weight:900;
 }
-
-/* Bigger pointer, clearly pointing DOWN from the top rim */
-.wheel-pointer{
+.pw-pointer{
   position:absolute; top:-2px; left:50%; transform:translateX(-50%);
   width:0; height:0;
   border-left:20px solid transparent; border-right:20px solid transparent;
   border-bottom:36px solid #d49a2e; /* points DOWN */
   filter:drop-shadow(0 2px 2px rgba(0,0,0,.25));
 }
-.wheel-actions{ margin-top:6px; }
+.pw-actions{ margin-top:6px; }
 
-/* Accessibility */
+/* Accessibility focus */
 .lock:focus-within img, .drop-slot:focus-within, .letter:focus{ outline:3px solid #ffcc66; outline-offset:3px; }
