@@ -94,7 +94,14 @@ body{
 .heart{ width:24px; height:24px; object-fit:contain; transition:filter .2s, opacity .2s; }
 .heart.lost{ filter:grayscale(1) brightness(.6); opacity:.7; }
 .scrolls{ display:flex; align-items:center; gap:10px; justify-self:end; }
-.scroll-icon{ width:22px; height:22px; object-fit:contain; transform:none; }
+
+.scroll-icon{
+  width:22px;
+  height:22px;
+  object-fit:contain;
+  transform: rotate(45deg);
+}
+
 .scroll-count{ font-weight:900; color:#5a3d1e; font-size:18px; }
 
 .theme-card{ display:flex; flex-direction:column; gap:6px; background:#fff8e8; border-color:#e3cfa6; }
