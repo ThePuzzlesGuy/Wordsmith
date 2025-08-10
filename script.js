@@ -82,7 +82,7 @@ function setupBoard(restartSame=false) {
     gridEl.appendChild(div);
   }
 
-  markPrizeTile();          // place the wheel tile
+  markPrizeTile();
   buildDynamicLocks(currentBoard.words);
 }
 
@@ -693,8 +693,7 @@ function confirmChoice(message, yesLabel="Yes", noLabel="No"){
 function shuffle(arr){ for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
 
 /* ==================== NEW PRIZE WHEEL ==================== */
-
-/** Truth: one array that drives color, icon, and outcome. Equal chances. */
+/* One source of truth — order is clockwise starting at TOP (12 o'clock). */
 const PW_SLICES = [
   {id:'wood',  label:'Wood Key',      color:'#D7B48A', icon:'sprites/key_wood.png'},
   {id:'stone', label:'Stone Key',     color:'#C9CCD3', icon:'sprites/key_stone.png'},
@@ -726,31 +725,33 @@ function buildPrizeWheel(){
   const dial = document.getElementById('pw-dial');
   if (!dial) return;
 
-  // Equal slices conic gradient starting at TOP (pointer)
   const N = PW_SLICES.length; // 6
-  const pct = 100/N;
+  const pct = 100 / N;
   const stops = PW_SLICES.map((s,i)=>`${s.color} ${i*pct}% ${(i+1)*pct}%`).join(', ');
+  // Start at TOP (from -90deg), equal slices
   dial.style.background = `conic-gradient(from -90deg, ${stops})`;
 
-  // Clear previous icons
+  // Remove old icons
   dial.querySelectorAll('.pw-icon').forEach(n => n.remove());
 
-  // Place icons via trig (no rotational math drift)
+  // Place icons at slice centers using trig so there’s no rotational drift
   const base = 360/N;
-  const r = 95; // radius
+  const radius = 110; // distance from center
+  const cx = 150, cy = 150; // dial center (300x300)
   for (let i=0;i<N;i++){
     const slice = PW_SLICES[i];
-    const centerFromTop = i*base + base/2; // degrees, clockwise from TOP
-    const rad = (Math.PI/180) * centerFromTop;
-    const x = r * Math.sin(rad);
-    const y = -r * Math.cos(rad);
+    const centerFromTop = i*base + base/2; // degrees clockwise from TOP
+    const rad = centerFromTop * Math.PI/180;
+    const x = cx + radius * Math.sin(rad);
+    const y = cy - radius * Math.cos(rad);
 
-    const el = document.createElement('div');
-    el.className = slice.id === 'lose' ? 'pw-icon badge' : 'pw-icon';
-    el.style.left = `calc(50% + ${x}px)`;
-    el.style.top  = `calc(50% + ${y}px)`;
-    if (slice.id === 'lose') {
-      el.textContent = '−1';
+    const icon = document.createElement('div');
+    icon.className = slice.id === 'lose' ? 'pw-icon badge' : 'pw-icon';
+    icon.style.left = `${x}px`;
+    icon.style.top  = `${y}px`;
+
+    if (slice.id === 'lose'){
+      icon.textContent = '−1';
     } else {
       const img = document.createElement('img');
       img.src = slice.icon;
@@ -758,12 +759,12 @@ function buildPrizeWheel(){
       img.style.width = '100%';
       img.style.height = '100%';
       img.style.objectFit = 'contain';
-      el.appendChild(img);
+      icon.appendChild(img);
     }
-    dial.appendChild(el);
+    dial.appendChild(icon);
   }
 
-  dial.style.transform = 'rotate(0deg)'; // reset between spins
+  dial.style.transform = 'translateX(-50%) rotate(0deg)'; // reset
 }
 
 function spinPrizeWheel(){
@@ -774,19 +775,19 @@ function spinPrizeWheel(){
 
   btn.disabled = true;
 
-  // Choose slice uniformly
+  // Choose outcome uniformly among 6 equal slices
   const N = PW_SLICES.length;
   const base = 360/N;
   const index = Math.floor(Math.random()*N);
   const outcomeId = PW_SLICES[index].id;
 
-  // Rotate so that slice center goes to TOP (under downward pointer)
+  // Pointer is at BOTTOM (180° from top). Rotate so chosen slice center hits BOTTOM.
   const centerFromTop = index*base + base/2;
   const spins = 4 + Math.floor(Math.random()*3); // 4–6 spins
-  const target = spins*360 - centerFromTop;
+  const target = spins*360 + (180 - centerFromTop);
 
   void dial.offsetWidth; // reflow
-  dial.style.transform = `rotate(${target}deg)`;
+  dial.style.transform = `translateX(-50%) rotate(${target}deg)`;
 
   setTimeout(async () => {
     modal.classList.add('hidden');
