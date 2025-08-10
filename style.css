@@ -153,3 +153,45 @@ body{
 
 /* Accessibility */
 .lock:focus-within img, .drop-slot:focus-within, .letter:focus{ outline:3px solid #ffcc66; outline-offset:3px; }
+
+/* === Vault badge on a letter === */
+.letter{ position: relative; }
+.letter .vault-badge{
+  position:absolute; right:2px; top:2px; width:20px; height:20px; pointer-events:none;
+  image-rendering:auto;
+}
+
+/* === Prize Wheel Overlay (safe dial style) === */
+.wheel-overlay{
+  position:fixed; inset:0; background:rgba(10,12,18,.78);
+  display:grid; place-items:center; z-index:9999;
+}
+.wheel-overlay.hidden{ display:none; }
+.wheel-stage{ position:relative; width:min(980px,92vw); }
+#wheel-canvas{
+  display:block; width:min(92vw,600px); height:auto; aspect-ratio:1/1; border-radius:50%;
+  background:radial-gradient(circle at 50% 42%,#2a3042,#1a1f2d 64%,#111522 100%); margin:0 auto;
+}
+.wheel-controls{
+  position:absolute; left:50%; transform:translateX(-50%); bottom:8px;
+  background:#151821; border:1px solid #242b3a; border-radius:16px; padding:12px 14px;
+  display:flex; gap:12px; align-items:center; justify-content:center; box-shadow:0 10px 24px rgba(0,0,0,.35);
+}
+.wheel-controls .btn{ border:0; border-radius:999px; padding:10px 16px; cursor:pointer; }
+.wheel-controls .primary{ background:linear-gradient(180deg,#6ea2ff,#4a7be9); color:#fff; font-weight:700; letter-spacing:.4px; }
+
+/* Safe door reveal */
+.safeDoor{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,600px);height:auto;aspect-ratio:1/1;border-radius:12px;pointer-events:none;opacity:0;transition:opacity .2s ease}
+.safeDoor.show{opacity:1}
+.safeDoor .interior{position:absolute;inset:6% 6% 6% 6%;border-radius:14px;background:radial-gradient(180% 120% at 30% 20%,#2a3246 0%,#141a28 45%,#0c101a 100%);border:1px solid #0a0d15;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),inset 0 -1px 0 rgba(0,0,0,.6);display:grid;place-items:center;opacity:0;transform:translateY(6px) scale(.985);transition:opacity 400ms ease 200ms,transform 400ms ease 200ms}
+.safeDoor.open .interior{opacity:1;transform:translateY(0) scale(1)}
+.safeDoor .plate{position:absolute;inset:0;background:radial-gradient(120% 120% at 20% 20%,#3a4256,#222838);border:1px solid #0a0d15;border-radius:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),inset 0 -1px 0 rgba(0,0,0,.6),0 20px 50px rgba(0,0,0,.4);transform-origin:left center;transform:perspective(900px) rotateY(0deg);transition:transform 900ms cubic-bezier(.2,.9,.2,1)}
+.safeDoor.open .plate{transform:perspective(900px) rotateY(-105deg)}
+.bolts{position:absolute;right:14px;top:20px;display:grid;gap:10px}
+.bolt{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#cdd5df,#8a96a8);box-shadow:inset 0 1px 1px rgba(255,255,255,.6),0 6px 14px rgba(0,0,0,.35)}
+.prize{width:min(78%,480px);border-radius:14px;display:grid;place-items:center;background:linear-gradient(180deg,#0d1018,#0a0d14);border:1px solid #0a0d15;box-shadow:inset 0 1px 0 rgba(255,255,255,.03),0 12px 28px rgba(0,0,0,.38);padding:18px 16px;text-align:center}
+.prize img{display:block;max-width:90%;max-height:320px;height:auto}
+.lip{position:absolute;inset:3%;border-radius:14px;border:1px solid rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(0,0,0,.6),inset 0 14px 24px rgba(0,0,0,.35)}
+
+/* Peek highlight for Scroll Peek */
+.lock.peek{ box-shadow:0 0 0 3px rgba(255, 230, 120, .9), 0 0 24px rgba(255, 245, 170, .8) inset; transform:scale(1.02); }
