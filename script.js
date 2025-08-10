@@ -693,14 +693,16 @@ function confirmChoice(message, yesLabel="Yes", noLabel="No"){
 function shuffle(arr){ for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
 
 /* ==================== NEW PRIZE WHEEL ==================== */
-/* One source of truth — order is clockwise starting at TOP (12 o'clock). */
+/* Equal slices. Order is clockwise starting at TOP (12 o'clock). Lose appears 3 times. */
 const PW_SLICES = [
-  {id:'wood',  label:'Wood Key',      color:'#D7B48A', icon:'sprites/key_wood.png'},
-  {id:'stone', label:'Stone Key',     color:'#C9CCD3', icon:'sprites/key_stone.png'},
-  {id:'gold',  label:'Gold Key',      color:'#FFD24A', icon:'sprites/key_gold.png'},
-  {id:'pick',  label:'Lock Pick',     color:'#8C5A34', icon:'sprites/key_pick.png'},
-  {id:'solve', label:'Reveal Scroll', color:'#7ED4A6', icon:'sprites/scroll.png'},
-  {id:'lose',  label:'Lose a Key',    color:'#F06A6A', icon:null}
+  {id:'wood',  color:'#D7B48A'}, // light brown
+  {id:'stone', color:'#C9CCD3'}, // gray
+  {id:'gold',  color:'#FFD24A'}, // gold
+  {id:'pick',  color:'#8C5A34'}, // dark brown
+  {id:'solve', color:'#7ED4A6'}, // green
+  {id:'lose',  color:'#F06A6A'}, // red
+  {id:'lose',  color:'#F06A6A'}, // red
+  {id:'lose',  color:'#F06A6A'}  // red
 ];
 
 function markPrizeTile(){
@@ -725,45 +727,10 @@ function buildPrizeWheel(){
   const dial = document.getElementById('pw-dial');
   if (!dial) return;
 
-  const N = PW_SLICES.length; // 6
+  const N = PW_SLICES.length; // 8
   const pct = 100 / N;
   const stops = PW_SLICES.map((s,i)=>`${s.color} ${i*pct}% ${(i+1)*pct}%`).join(', ');
-  // Start at TOP (from -90deg), equal slices
   dial.style.background = `conic-gradient(from -90deg, ${stops})`;
-
-  // Remove old icons
-  dial.querySelectorAll('.pw-icon').forEach(n => n.remove());
-
-  // Place icons at slice centers using trig so there’s no rotational drift
-  const base = 360/N;
-  const radius = 110; // distance from center
-  const cx = 150, cy = 150; // dial center (300x300)
-  for (let i=0;i<N;i++){
-    const slice = PW_SLICES[i];
-    const centerFromTop = i*base + base/2; // degrees clockwise from TOP
-    const rad = centerFromTop * Math.PI/180;
-    const x = cx + radius * Math.sin(rad);
-    const y = cy - radius * Math.cos(rad);
-
-    const icon = document.createElement('div');
-    icon.className = slice.id === 'lose' ? 'pw-icon badge' : 'pw-icon';
-    icon.style.left = `${x}px`;
-    icon.style.top  = `${y}px`;
-
-    if (slice.id === 'lose'){
-      icon.textContent = '−1';
-    } else {
-      const img = document.createElement('img');
-      img.src = slice.icon;
-      img.alt = slice.label;
-      img.style.width = '100%';
-      img.style.height = '100%';
-      img.style.objectFit = 'contain';
-      icon.appendChild(img);
-    }
-    dial.appendChild(icon);
-  }
-
   dial.style.transform = 'translateX(-50%) rotate(0deg)'; // reset
 }
 
@@ -775,13 +742,13 @@ function spinPrizeWheel(){
 
   btn.disabled = true;
 
-  // Choose outcome uniformly among 6 equal slices
+  // Choose outcome uniformly among slices
   const N = PW_SLICES.length;
   const base = 360/N;
   const index = Math.floor(Math.random()*N);
   const outcomeId = PW_SLICES[index].id;
 
-  // Pointer is at BOTTOM (180° from top). Rotate so chosen slice center hits BOTTOM.
+  // Pointer is at BOTTOM. Land the chosen slice center at 180°.
   const centerFromTop = index*base + base/2;
   const spins = 4 + Math.floor(Math.random()*3); // 4–6 spins
   const target = spins*360 + (180 - centerFromTop);
