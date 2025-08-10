@@ -32,9 +32,44 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.addEventListener(ev, endSelect)
   );
 
-  // initialize prize wheel once DOM is ready
+  // Init wheel + install image fallbacks (handles legend/hearts if path differs)
   initPrizeWheel();
+  installImageFallbacks();
 });
+
+/* ---------- Sprite path fallback helpers ---------- */
+function installImageFallbacks(){
+  const tryResolve = (img) => {
+    const src = img.getAttribute('src') || '';
+    if (!src) return;
+    const file = src.split('/').pop();
+    if (!file) return;
+
+    // If currently pointing at sprites/, try root. If root, try sprites/.
+    if (src.includes('sprites/')) {
+      img.onerror = null;
+      img.src = file;
+    } else {
+      img.onerror = null;
+      img.src = 'sprites/' + file;
+    }
+  };
+
+  // For any existing <img>, attempt fallback on error or if already broken.
+  document.querySelectorAll('img').forEach(img => {
+    img.addEventListener('error', () => tryResolve(img));
+    if (img.complete && img.naturalWidth === 0) tryResolve(img);
+  });
+}
+
+// Create an <img> with automatic fallback: sprites/<file> -> <file>
+function createSpriteImg(file, alt = ''){
+  const img = new Image();
+  img.alt = alt;
+  img.src = 'sprites/' + file;
+  img.onerror = () => { img.onerror = null; img.src = file; };
+  return img;
+}
 
 async function loadBoards() {
   const res = await fetch("boards.json");
@@ -116,7 +151,10 @@ function buildDynamicLocks(words) {
     lock.className = 'lock';
     lock.dataset.type = type;
     lock.dataset.id = String(i);
-    lock.innerHTML = `<img src="sprites/lock_${type}.png" alt="">`;
+
+    const img = createSpriteImg(`lock_${type}.png`, `${type} lock`);
+    lock.appendChild(img);
+
     lock.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
     lock.addEventListener("drop", e => onLockDrop(e, lock));
     wrap.appendChild(lock);
@@ -258,8 +296,7 @@ function revealScroll(lock){
   updateProgressUI();
 
   showMessage("You've found the scroll!");
-  const scroll = document.createElement("img");
-  scroll.src = "sprites/scroll.png";
+  const scroll = createSpriteImg('scroll.png', 'scroll');
   scroll.style.position = "absolute";
   scroll.style.top = "0";
   scroll.style.left = "0";
@@ -272,7 +309,6 @@ function revealScroll(lock){
 function startSelect(e) {
   if (e.target.dataset.active !== "true") return;
   e.preventDefault();
-  // failsafe: don’t allow smith slots to be used as extra inventory
   recallForgeKeysToInventory();
 
   isSelecting = true;
@@ -333,7 +369,6 @@ function markUsedTiles(tiles) {
 
   // trigger wheel if this selection used the vault tile
   if (vaultIndex !== -1 && tiles.some(el => Number(el.dataset.index) === Number(vaultIndex))) {
-    // remove the badge so it can't re-trigger
     const grid = document.getElementById('letter-grid');
     const badge = grid && grid.querySelector('.vault-badge');
     if (badge) badge.remove();
@@ -366,8 +401,7 @@ function spawnKey(type){
     return;
   }
 
-  const img = document.createElement("img");
-  img.src = `sprites/key_${type}.png`;
+  const img = createSpriteImg(`key_${type}.png`, `${type} key`);
   img.className = "key";
   img.dataset.type = type;
   img.draggable = true;
@@ -375,11 +409,9 @@ function spawnKey(type){
   let dragGhost = null;
 
   img.addEventListener("dragstart", (e) => {
-    // indicate what we're dragging
     e.dataTransfer.setData("text/plain", img.dataset.type || "key");
     e.dataTransfer.effectAllowed = "move";
 
-    // make a small key preview as the drag image
     dragGhost = img.cloneNode(true);
     dragGhost.style.width = "36px";
     dragGhost.style.height = "36px";
@@ -563,7 +595,7 @@ function runDurabilityCheck(keyType){
 function runGamble(successChance){ return new Promise(resolve => { showGambleBar(successChance, resolve); }); }
 function showGambleBar(successChance, resolve){
   const breakOdds = 1 - successChance;
-  const dur = document.getElementById('durability'); // existing id reference kept as-is
+  const dur = document.getElementById('durability'); // if null, we gracefully no-op
   const cursor = document.getElementById('dur-cursor');
   const caption = document.getElementById('dur-caption');
   const red = document.querySelector('.dur-red');
@@ -727,13 +759,18 @@ function confirmChoice(message, yesLabel="Yes", noLabel="No"){
     popup.dataset.dismiss = "locked"; actions.appendChild(yes); actions.appendChild(no); popup.classList.remove('hidden');
   });
 }
-function shuffle(arr){ for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j]], arr[i]; } return arr; }
+function shuffle(arr){
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 /* ================== VAULT + WHEEL ================== */
 function placeVaultIcon(){
   const grid = document.getElementById('letter-grid');
   if (!grid) return;
-  // remove existing badge
   grid.querySelectorAll('.vault-badge').forEach(el => el.remove());
 
   const tiles = Array.from(grid.querySelectorAll('.letter')).filter(el => el.dataset.active === "true");
@@ -742,9 +779,7 @@ function placeVaultIcon(){
   const pick = tiles[Math.floor(Math.random()*tiles.length)];
   vaultIndex = Number(pick.dataset.index);
 
-  const img = document.createElement('img');
-  img.src = 'sprites/vault.png';
-  img.alt = 'Vault';
+  const img = createSpriteImg('vault.png', 'Vault');
   img.className = 'vault-badge';
   pick.appendChild(img);
 }
@@ -768,15 +803,15 @@ function initPrizeWheel(){
   const prizeImg = document.getElementById('prizeImg');
 
   const SPRITES={
-    "Gold Key":"sprites/key_gold.png",
-    "Stone Key":"sprites/key_stone.png",
-    "Wooden Key":"sprites/key_wood.png",
-    "Combine 2 Keys":"sprites/lock_wood.png",
-    "Lose a Key":"sprites/lose_key.png",
-    "Reveal Hint":"sprites/scroll.png",
-    "Scroll Peek":"sprites/scroll.png",
-    "Reroll":"sprites/key_pick.png",
-    "+1 Spin":"sprites/heart.png"
+    "Gold Key":"key_gold.png",
+    "Stone Key":"key_stone.png",
+    "Wooden Key":"key_wood.png",
+    "Combine 2 Keys":"lock_wood.png",
+    "Lose a Key":"lose_key.png",
+    "Reveal Hint":"scroll.png",
+    "Scroll Peek":"scroll.png",
+    "Reroll":"key_pick.png",
+    "+1 Spin":"heart.png"
   };
 
   const PRIZES=[
@@ -848,12 +883,13 @@ function initPrizeWheel(){
     const turns=6+Math.floor(Math.random()*2), current=angle; let target=targetAngleBase;
     while(target>current-2*Math.PI*turns) target-=2*Math.PI;
 
-    const start=performance.now(), dur=3800, ease=t=>1-Math.pow(1-t,3);
-    spinning=true; spinBtn.disabled=true; safeDoor.classList.remove("open","show"); canvas.classList.remove("hidden"); prizeImg.removeAttribute("src");
+    const start=performance.now(), dur=3800;
+    const ease=t=>1-Math.pow(1-t,3);
+    spinning=true; spinBtn.disabled=true; safeDoor.classList.remove("open","show"); canvas.classList.add('showing'); prizeImg.removeAttribute("src");
 
     (function loop(now){
       const t = Math.max(0, Math.min(1, (now-start)/dur));
-      angle = current + (target-current) * (1 - Math.pow(1 - t, 3));
+      angle = current + (target-current) * ease(t);
       draw();
       if (t<1){ requestAnimationFrame(loop); }
       else { angle=targetAngleBase; draw(); spinning=false; spinBtn.disabled=false; revealPrize(PRIZES[index]); }
@@ -861,8 +897,13 @@ function initPrizeWheel(){
   }
 
   function revealPrize(p){
-    prizeImg.src = (SPRITES[p.label]||"sprites/lock_gold.png");
-    canvas.classList.add("hidden"); safeDoor.classList.add("show");
+    // Use sprite helper so it also falls back root<->sprites
+    const img = createSpriteImg(SPRITES[p.label], p.label);
+    prizeImg.replaceWith(img);
+    img.id = 'prizeImg';
+
+    canvas.classList.remove("showing");
+    safeDoor.classList.add("show");
     requestAnimationFrame(()=>safeDoor.classList.add("open"));
     applyPrize(p.label);
   }
@@ -878,7 +919,7 @@ function initPrizeWheel(){
   spinBtn.addEventListener('click', ()=>{
     if(spinning) return;
     if (safeDoor.classList.contains('open')){
-      if (wheelSpinsPending>0){ safeDoor.classList.remove('open','show'); canvas.classList.remove('hidden'); spinBtn.disabled=false; spinBtn.textContent='Spin'; return; }
+      if (wheelSpinsPending>0){ safeDoor.classList.remove('open','show'); draw(); spinBtn.disabled=false; spinBtn.textContent='Spin'; return; }
       else return;
     }
     const i = pickWeightedIndex();
@@ -886,7 +927,6 @@ function initPrizeWheel(){
   });
   closeBtn.addEventListener('click', closeOverlay);
 
-  // expose open function
   window.openPrizeWheel = function(){ wheelSpinsPending = Math.max(1, wheelSpinsPending); openOverlay(); };
 
   draw();
