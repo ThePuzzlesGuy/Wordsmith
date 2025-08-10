@@ -15,10 +15,10 @@ let isSelecting = false;
 
 let prizeTileIndex = null;
 
-/* Equal visual slices; weighted backend outcomes.
+/* Equal visual slices; weighted outcomes.
    Colors per spec:
-   Gold=#FFD24A, Stone=#C9CCD3, Wood(light)=#D7B48A, Pick(dark)=#8C5A34,
-   Lose=Red #F06A6A, Reveal=Green #7ED4A6 */
+   Gold=#FFD24A, Stone=#C9CCD3, Wood=#D7B48A, Pick(dark)=#8C5A34,
+   Lose=#F06A6A, Reveal=#7ED4A6 */
 const WHEEL_SEGMENTS = [
   { id:'wood',  label:'Wood Key',     weight:28, color:'#D7B48A', icon:'sprites/key_wood.png' },
   { id:'lose',  label:'Lose a Key',   weight: 2, color:'#F06A6A', icon:null },
@@ -538,14 +538,9 @@ function runDurabilityCheck(keyType){
     showGambleBar(survival, resolve);
   });
 }
-
-function runGamble(successChance){
-  return new Promise(resolve => { showGambleBar(successChance, resolve); });
-}
-
+function runGamble(successChance){ return new Promise(resolve => { showGambleBar(successChance, resolve); }); }
 function showGambleBar(successChance, resolve){
   const breakOdds = 1 - successChance;
-
   const dur = document.getElementById('durability');
   const cursor = document.getElementById('dur-cursor');
   const caption = document.getElementById('dur-caption');
@@ -592,11 +587,9 @@ function updateProgressUI(){
 
 function maybeCheckLose(){
   if (resolvingLoss) return;
-
   if (isAnyRemainingWordPossible()) return;
   if (canOpenHiddenLock()) return;
 
-  // Lose a life and restart SAME board (keep inventory).
   resolvingLoss = true;
   lives = Math.max(0, lives - 1);
   updateProgressUI();
@@ -610,29 +603,18 @@ function maybeCheckLose(){
         <div class="inv-slot"></div>
         <div class="inv-slot"></div>
         <div class="inv-slot"></div>`;
-      lives = 3;
-      scrolls = 0;
-      updateProgressUI();
-      setupBoard(/*restartSame=*/false);
-      setupDragAndDrop();
-      resolvingLoss = false;
+      lives = 3; scrolls = 0; updateProgressUI(); setupBoard(false); setupDragAndDrop(); resolvingLoss = false;
     }, 1200);
   } else {
-    // Show Continue modal; after click, retry same board
     showContinue(
       "Oh no! You've lost a heart.\nNo valid words, or keys remaining.\nThe scroll is now behind a new lock-\ntry and find it before you use all 3 hearts!",
       "Continue"
-    ).then(() => {
-      setupBoard(/*restartSame=*/true);
-      resolvingLoss = false;
-    });
+    ).then(() => { setupBoard(true); resolvingLoss = false; });
   }
 }
 
-/* Is any remaining word possible from ACTIVE letters? (multiset check) */
 function isAnyRemainingWordPossible(){
   if (remainingWords.length === 0) return false;
-
   const counts = {};
   document.querySelectorAll('#letter-grid .letter').forEach(t => {
     if (t.dataset.active === "true") {
@@ -640,14 +622,12 @@ function isAnyRemainingWordPossible(){
       counts[ch] = (counts[ch] || 0) + 1;
     }
   });
-
   const canMake = (word) => {
     const need = {};
     for (const ch of word.toUpperCase()) need[ch] = (need[ch] || 0) + 1;
     for (const k in need) if (!counts[k] || counts[k] < need[k]) return false;
     return true;
   };
-
   return remainingWords.some(canMake);
 }
 
@@ -661,14 +641,12 @@ function canOpenHiddenLock(){
   const typeNeeded = getHiddenLockType();
   if (!typeNeeded) return false;
 
-  if (typeNeeded === 'wood') {
-    return counts.wood > 0 || pickPossible(counts) > 0;
-  }
-  if (typeNeeded === 'stone') {
+  if (typeNeeded === 'wood') return counts.wood > 0 || pickPossible(counts) > 0;
+  if (typeNeeded === 'stone'){
     const stonesFromWood = Math.floor(counts.wood / 2);
     return counts.stone > 0 || stonesFromWood > 0 || pickPossible(counts) > 0;
   }
-  if (typeNeeded === 'gold') {
+  if (typeNeeded === 'gold'){
     const stonesFromWood = Math.floor(counts.wood / 2);
     const totalStones = counts.stone + stonesFromWood;
     const goldFromStones = Math.floor(totalStones / 2);
@@ -676,118 +654,58 @@ function canOpenHiddenLock(){
   }
   return false;
 }
-
 function pickPossible(counts){
   const stonesFromWood = Math.floor(counts.wood / 2);
   const totalStones = counts.stone + stonesFromWood;
   const goldFromStones = Math.floor(totalStones / 2);
   const totalGold = counts.gold + goldFromStones;
-  const picks = Math.floor(totalGold / 2);
-  return picks;
+  return Math.floor(totalGold / 2);
 }
-
 function getHiddenLockType(){
   const el = document.querySelector(`.lock[data-id="${hiddenLockId}"]`);
   return el?.dataset.type || null;
 }
 
 /* ========== POPUPS & UTILS ========== */
-function clearPopupTimer(){
-  if (window._popupTimer){
-    clearTimeout(window._popupTimer);
-    window._popupTimer = null;
-  }
-}
-
+function clearPopupTimer(){ if (window._popupTimer){ clearTimeout(window._popupTimer); window._popupTimer = null; } }
 function showMessage(msg, opts = {}) {
-  const popup = document.getElementById('popup');
+  const popup = document.getElementById('popup'); if (!popup) return;
+  if (popup.dataset.dismiss === 'locked') return;
   const txt = document.getElementById('popup-text');
   const actions = document.getElementById('popup-actions');
-  if (!popup || !txt || !actions) return;
-
-  clearPopupTimer();                // ← clear any old timer
-  txt.textContent = msg;
-  actions.innerHTML = "";           // no buttons
-  popup.dataset.dismiss = "";       // allow backdrop close
-  popup.classList.remove('hidden');
-
-  const duration = (opts && typeof opts.duration === 'number')
-    ? opts.duration
-    : (opts.sticky ? 2200 : 1600);
-
+  clearPopupTimer(); txt.textContent = msg; actions.innerHTML = ""; popup.dataset.dismiss = ""; popup.classList.remove('hidden');
+  const duration = (opts && typeof opts.duration === 'number') ? opts.duration : (opts.sticky ? 2200 : 1600);
   window._popupTimer = setTimeout(() => hidePopup(), duration);
 }
-
 function showContinue(message, buttonLabel="Continue"){
   return new Promise(resolve => {
     const popup = document.getElementById('popup');
     const txt = document.getElementById('popup-text');
     const actions = document.getElementById('popup-actions');
     if (!popup || !txt || !actions) { resolve(); return; }
-
-    clearPopupTimer();              // ← kill any previous auto-hide
-    txt.textContent = message;
-    actions.innerHTML = "";
-
-    const btn = document.createElement('button');
-    btn.className = 'btn primary';
-    btn.textContent = buttonLabel;
-
-    btn.addEventListener('click', () => {
-      popup.classList.add('hidden');
-      popup.dataset.dismiss = "";   // unlock backdrop for normal popups
-      resolve();
-    });
-
+    clearPopupTimer(); txt.textContent = message; actions.innerHTML = "";
+    const btn = document.createElement('button'); btn.className = 'btn primary'; btn.textContent = buttonLabel;
+    btn.addEventListener('click', () => { popup.classList.add('hidden'); popup.dataset.dismiss = ""; resolve(); });
     actions.appendChild(btn);
-
-    popup.dataset.dismiss = "locked"; // disable backdrop click-to-close
-    popup.classList.remove('hidden');
+    popup.dataset.dismiss = "locked"; popup.classList.remove('hidden');
   });
 }
-
-function hidePopup(){
-  clearPopupTimer();                // ← ensure no stray timers fire later
-  const p = document.getElementById('popup');
-  if (p) p.classList.add('hidden');
-}
-
+function hidePopup(){ const p = document.getElementById('popup'); if (p?.dataset.dismiss === 'locked') return; clearPopupTimer(); p?.classList.add('hidden'); }
 function confirmChoice(message, yesLabel="Yes", noLabel="No"){
   return new Promise(resolve => {
     const popup = document.getElementById('popup');
     const txt = document.getElementById('popup-text');
     const actions = document.getElementById('popup-actions');
     if (!popup || !txt || !actions) { resolve(false); return; }
-
-    clearPopupTimer();              // ← no auto-hide during choice
-    txt.textContent = message;
-    actions.innerHTML = "";
-
-    const yes = document.createElement('button');
-    yes.className = 'btn primary';
-    yes.textContent = yesLabel;
-
-    const no = document.createElement('button');
-    no.className = 'btn';
-    no.textContent = noLabel;
-
+    clearPopupTimer(); txt.textContent = message; actions.innerHTML = "";
+    const yes = document.createElement('button'); yes.className = 'btn primary'; yes.textContent = yesLabel;
+    const no  = document.createElement('button'); no.className  = 'btn'; no.textContent = noLabel;
     yes.addEventListener('click', () => { popup.classList.add('hidden'); popup.dataset.dismiss=""; resolve(true); });
-    no.addEventListener('click',  () => { popup.classList.add('hidden'); popup.dataset.dismiss=""; resolve(false); });
-
-    popup.dataset.dismiss = "locked";
-    actions.appendChild(yes);
-    actions.appendChild(no);
-    popup.classList.remove('hidden');
+    no .addEventListener('click', () => { popup.classList.add('hidden'); popup.dataset.dismiss=""; resolve(false); });
+    popup.dataset.dismiss = "locked"; actions.appendChild(yes); actions.appendChild(no); popup.classList.remove('hidden');
   });
 }
-
-function shuffle(arr){
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
+function shuffle(arr){ for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
 
 /* ==================== PRIZE WHEEL ==================== */
 function markPrizeTile(){
@@ -803,7 +721,7 @@ function buildWheelVisual(){
   const spin  = document.getElementById('wheel-spin');
   if (!dial || !spin) return;
 
-  // Equal visual slices
+  // Equal visual slices; start at top so pointer matches
   const N = WHEEL_SEGMENTS.length;
   const pct = 100 / N;
   const stops = WHEEL_SEGMENTS.map((seg, i) => {
@@ -811,17 +729,17 @@ function buildWheelVisual(){
     const end   = (i + 1) * pct;
     return `${seg.color} ${start}% ${end}%`;
   }).join(', ');
-  dial.style.background = `conic-gradient(${stops})`;
+  dial.style.background = `conic-gradient(from -90deg, ${stops})`;
 
   // clear previous icons
   dial.querySelectorAll('.wheel-icon').forEach(n => n.remove());
 
-  // place icons at slice centers
+  // place icons at slice centers (angles measured from TOP)
   const base = 360 / N;
-  const radius = 92; // px from center
+  const radius = 92;
   for (let i=0;i<N;i++){
     const seg = WHEEL_SEGMENTS[i];
-    const center = i * base + base/2;
+    const center = i * base + base/2; // from top
 
     const el = document.createElement('div');
     el.className = seg.id === 'lose' ? 'wheel-icon badge' : 'wheel-icon';
@@ -870,15 +788,13 @@ function spinWheel(){
     for (let i=0;i<WHEEL_SEGMENTS.length;i++){ sum += WHEEL_SEGMENTS[i].weight; if (r < sum){ chosenIndex = i; break; } }
     const chosen = WHEEL_SEGMENTS[chosenIndex];
 
-    // center angle for equal slices, with pointer at TOP (90°)
+    // center angle from TOP
     const N = WHEEL_SEGMENTS.length;
     const base = 360 / N;
-    const center = chosenIndex * base + base/2;
+    const centerFromTop = chosenIndex * base + base/2;
 
     const spins = 4 + Math.floor(Math.random()*3);
-    const pointerAngle = 90; // top
-    const offset = (pointerAngle - center + 360) % 360;
-    const target = spins*360 + offset;
+    const target = spins*360 - centerFromTop; // land with center at top under downward pointer
 
     // spin
     void dial.offsetWidth;
