@@ -15,20 +15,24 @@ let isSelecting = false;
 
 let prizeTileIndex = null;
 
-/* Equal visual slices; weighted outcomes.
-   Colors per spec:
-   Gold=#FFD24A, Stone=#C9CCD3, Wood=#D7B48A, Pick(dark)=#8C5A34,
-   Lose=#F06A6A, Reveal=#7ED4A6 */
-const WHEEL_SEGMENTS = [
-  { id:'wood',  label:'Wood Key',     weight:28, color:'#D7B48A', icon:'sprites/key_wood.png' },
-  { id:'lose',  label:'Lose a Key',   weight: 2, color:'#F06A6A', icon:null },
-  { id:'stone', label:'Stone Key',    weight:28, color:'#C9CCD3', icon:'sprites/key_stone.png' },
-  { id:'solve', label:'Reveal Scroll',weight: 3, color:'#7ED4A6', icon:'sprites/scroll.png' },
-  { id:'gold',  label:'Gold Key',     weight:23, color:'#FFD24A', icon:'sprites/key_gold.png' },
-  { id:'lose',  label:'Lose a Key',   weight: 2, color:'#F06A6A', icon:null },
-  { id:'pick',  label:'Lock Pick',    weight:12, color:'#8C5A34', icon:'sprites/key_pick.png' },
-  { id:'lose',  label:'Lose a Key',   weight: 2, color:'#F06A6A', icon:null },
-];
+const PRIZES = {
+  wood:  { id:'wood',  label:'Wood Key',       color:'#D7B48A', icon:'sprites/key_wood.png',  weight:28 },
+  stone: { id:'stone', label:'Stone Key',      color:'#C9CCD3', icon:'sprites/key_stone.png', weight:28 },
+  gold:  { id:'gold',  label:'Gold Key',       color:'#FFD24A', icon:'sprites/key_gold.png',  weight:23 },
+  pick:  { id:'pick',  label:'Lock Pick',      color:'#8C5A34', icon:'sprites/key_pick.png',  weight:12 },
+  lose:  { id:'lose',  label:'Lose a Key',     color:'#F06A6A', icon:null,                     weight: 6 }, // 3×2% visually
+  solve: { id:'solve', label:'Reveal Scroll',  color:'#7ED4A6', icon:'sprites/scroll.png',     weight: 3 },
+};
+
+/* Visual order around the wheel (equal slices).
+   We place “lose” three times so there are three distinct 2% slots. */
+const WHEEL_ORDER = ['wood','lose','stone','solve','gold','lose','pick','lose'];
+
+/* Derived helpers */
+const WHEEL_VISUAL = WHEEL_ORDER.map(key => PRIZES[key]);          // slices (icon + color)
+const TOTAL_WEIGHT = Object.values(PRIZES).reduce((a,p)=>a+p.weight,0);
+
+/* Colors were already specified in CSS for the board, locks, etc. Wheel uses the colors above. */
 
 document.addEventListener("DOMContentLoaded", async () => {
   await loadBoards();
@@ -133,7 +137,6 @@ function buildDynamicLocks(words) {
   sizeLocksRow();
 }
 
-/* shrink locks when >7, board stays same size */
 function sizeLocksRow() {
   const wrap = document.getElementById('locks');
   if (!wrap) return;
@@ -192,7 +195,6 @@ async function onLockDrop(e, lock) {
   }
 }
 
-/* Lock pick flow */
 async function handleLockPickDrop(lock, keyEl){
   const wantMulti = await confirmChoice(
     "Use the lock pick on multiple locks?",
@@ -405,7 +407,7 @@ function setupDragAndDrop() {
     area.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
   });
 
-  [slotA, slotB].forEach(slot => {
+  [slotA, slotB].forEach slot => {
     slot.addEventListener('dragenter', () => slot.classList.add('hover'));
     slot.addEventListener('dragleave', () => slot.classList.remove('hover'));
     slot.addEventListener("drop", e => {
@@ -721,25 +723,27 @@ function buildWheelVisual(){
   const spin  = document.getElementById('wheel-spin');
   if (!dial || !spin) return;
 
-  // Equal visual slices; start at top so pointer matches
-  const N = WHEEL_SEGMENTS.length;
+  /* Equal slices; gradient and icons both use the same WHEEL_VISUAL order */
+  const N = WHEEL_VISUAL.length;
   const pct = 100 / N;
-  const stops = WHEEL_SEGMENTS.map((seg, i) => {
+  const stops = WHEEL_VISUAL.map((seg, i) => {
     const start = i * pct;
     const end   = (i + 1) * pct;
     return `${seg.color} ${start}% ${end}%`;
   }).join(', ');
   dial.style.background = `conic-gradient(from -90deg, ${stops})`;
 
-  // clear previous icons
+  /* Clear previous icons */
   dial.querySelectorAll('.wheel-icon').forEach(n => n.remove());
 
-  // place icons at slice centers (angles measured from TOP)
+  /* Place icons at slice centers.
+     CSS rotate(0deg) points RIGHT, so convert top-based angle to css with -90° */
   const base = 360 / N;
   const radius = 92;
   for (let i=0;i<N;i++){
-    const seg = WHEEL_SEGMENTS[i];
-    const center = i * base + base/2; // from top
+    const seg = WHEEL_VISUAL[i];
+    const centerFromTop = i * base + base/2;
+    const cssAngle = centerFromTop - 90;
 
     const el = document.createElement('div');
     el.className = seg.id === 'lose' ? 'wheel-icon badge' : 'wheel-icon';
@@ -751,11 +755,10 @@ function buildWheelVisual(){
       img.alt = seg.label;
       el.appendChild(img);
     }
-    el.style.transform = `translate(-50%,-50%) rotate(${center}deg) translate(${radius}px) rotate(${-center}deg)`;
+    el.style.transform = `translate(-50%,-50%) rotate(${cssAngle}deg) translate(${radius}px) rotate(${-cssAngle}deg)`;
     dial.appendChild(el);
   }
 
-  // reset dial + enable button
   dial.style.transform = 'rotate(0deg)';
   spin.disabled = false;
 }
@@ -780,29 +783,32 @@ function spinWheel(){
     const wheel = document.getElementById('wheel');
     if (!dial || !wheel) { resolve(); return; }
 
-    const total = WHEEL_SEGMENTS.reduce((a,s)=>a+s.weight,0);
+    /* Weighted pick (independent of visual order). */
+    let r = Math.random() * TOTAL_WEIGHT;
+    let outcomeId = 'wood';
+    for (const p of Object.values(PRIZES)){
+      if ((r -= p.weight) <= 0){ outcomeId = p.id; break; }
+    }
 
-    // weighted pick
-    const r = Math.random() * total;
-    let sum = 0, chosenIndex = 0;
-    for (let i=0;i<WHEEL_SEGMENTS.length;i++){ sum += WHEEL_SEGMENTS[i].weight; if (r < sum){ chosenIndex = i; break; } }
-    const chosen = WHEEL_SEGMENTS[chosenIndex];
+    /* Choose which visual slice to land on (handles the 3 separate lose slots). */
+    const indices = WHEEL_VISUAL
+      .map((seg, i) => seg.id === outcomeId ? i : -1)
+      .filter(i => i !== -1);
+    const chosenIndex = indices[Math.floor(Math.random()*indices.length)];
 
-    // center angle from TOP
-    const N = WHEEL_SEGMENTS.length;
+    /* Spin so the chosen slice center ends up at the TOP (pointer points down). */
+    const N = WHEEL_VISUAL.length;
     const base = 360 / N;
     const centerFromTop = chosenIndex * base + base/2;
-
     const spins = 4 + Math.floor(Math.random()*3);
-    const target = spins*360 - centerFromTop; // land with center at top under downward pointer
+    const target = spins*360 - centerFromTop;
 
-    // spin
-    void dial.offsetWidth;
+    void dial.offsetWidth; // reflow
     dial.style.transform = `rotate(${target}deg)`;
 
     setTimeout(async () => {
       wheel.classList.add('hidden');
-      await applyWheelOutcome(chosen.id);
+      await applyWheelOutcome(outcomeId);
       maybeCheckLose();
       resolve();
     }, 3400);
