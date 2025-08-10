@@ -737,16 +737,22 @@ function buildWheelVisual(){
   const base = 360 / N;                    // 45°
   const pct  = 100 / N;
 
-  // Gradient: start from 0deg (to the RIGHT). Each slice is equal size.
+  // Gradient: start from RIGHT (0deg). Each slice is equal size.
   const stops = SLICES.map((seg, i) => `${seg.color} ${i*pct}% ${(i+1)*pct}%`).join(', ');
   dial.style.background = `conic-gradient(from 0deg, ${stops})`;
 
   // Clear old icons and lay new ones at slice centres.
   dial.querySelectorAll('.wheel-icon').forEach(n => n.remove());
+
   const radius = 92;
+  const ICON_ANGLE_OFFSET = 90; // <<— fix: icons were 90° behind the gradient
+
   for (let i=0;i<N;i++){
     const seg = SLICES[i];
+    // centre measured from RIGHT to match gradient
     const centerFromRight = i*base + base/2;
+    // shift icons +90° so they line up with slice colours
+    const cssAngle = centerFromRight + ICON_ANGLE_OFFSET;
 
     const icon = document.createElement('div');
     icon.className = seg.id === 'lose' ? 'wheel-icon badge' : 'wheel-icon';
@@ -758,7 +764,9 @@ function buildWheelVisual(){
       img.alt = seg.label;
       icon.appendChild(img);
     }
-    icon.style.transform = `translate(-50%,-50%) rotate(${centerFromRight}deg) translate(${radius}px) rotate(${-centerFromRight}deg)`;
+
+    icon.style.transform =
+      `translate(-50%,-50%) rotate(${cssAngle}deg) translate(${radius}px) rotate(${-cssAngle}deg)`;
     dial.appendChild(icon);
   }
 
@@ -796,7 +804,7 @@ function spinWheel(){
     }
     const outcomeId = SLICES[chosenIndex].id;
 
-    // Spin: our gradient/icons start from RIGHT (0deg).
+    // Our gradient/icons start from RIGHT (0deg).
     // Pointer is at TOP (90deg). Move chosen centre to 90deg.
     const N = SLICES.length;        // 8
     const base = 360 / N;           // 45°
