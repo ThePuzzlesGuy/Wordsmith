@@ -12,6 +12,11 @@
   /* Locks sizing */
   --lock-gap: 18px;
   --lock-size: 86px; /* default */
+
+  /* Smithing layout */
+  --smith-slot: 88px;     /* ↓ smaller so both fit neatly */
+  --smith-gap: 12px;
+  --smith-plus: 24px;
 }
 
 *{box-sizing:border-box}
@@ -159,7 +164,7 @@ body{
 .legend li{ display:flex; align-items:center; gap:10px; font-weight:700; color:#4a3826; }
 .legend-key{ width:22px; height:22px; object-fit:contain; }
 
-/* ===== Smithing panel ===== */
+/* ===== NEW: Smithing panel ===== */
 .smith.card{ display:flex; flex-direction:column; gap:12px; }
 .smith-card{
   background:linear-gradient(180deg,#fff9eb,#f6ebcf);
@@ -167,18 +172,20 @@ body{
   border-radius:16px;
   padding:14px;
   box-shadow: var(--shadow);
+  overflow:hidden; /* keep everything cleanly inside */
 }
 .smith-top{
   display:grid;
-  grid-template-columns: auto 32px auto;  /* slots on sides, plus centered */
+  grid-template-columns: var(--smith-slot) var(--smith-plus) var(--smith-slot);
+  gap: var(--smith-gap);
   align-items:center;
-  justify-items:center;                   /* center each cell's content */
-  gap:14px;
+  justify-content:center;  /* center the grid as a block */
+  justify-items:center;    /* center content inside each cell */
 }
 
 /* Drop slots */
 .drop-slot{
-  width:96px; height:96px;
+  width:var(--smith-slot); height:var(--smith-slot);
   border-radius:14px;
   background:#fff7e2;
   border:2px dashed #cba96e;
@@ -195,14 +202,18 @@ body{
 
 /* Plus icon */
 .plus-icon{
-  width:32px; height:32px; line-height:32px;
+  width:var(--smith-plus); height:var(--smith-plus); line-height:var(--smith-plus);
   text-align:center;
-  color:#b08749; font-size:22px; font-weight:900; opacity:.6;
+  color:#b08749; font-size:20px; font-weight:900; opacity:.6;
 }
 
 /* Forge button */
-.forge-btn{ width:100%; margin-top:10px; }
-.forge-btn:disabled{ opacity:.6; filter:grayscale(30%); cursor:not-allowed; }
+.forge-btn{
+  width:100%; margin-top:10px;
+}
+.forge-btn:disabled{
+  opacity:.6; filter:grayscale(30%); cursor:not-allowed;
+}
 
 /* Smith panel feedback */
 @keyframes smithStrike {
@@ -211,7 +222,6 @@ body{
   100%{box-shadow:0 0 0 rgba(255,208,96,0)}
 }
 #smith.strike{ animation: smithStrike .6s ease-out; }
-@keyframes invShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
 #smith.shake{ animation: invShake .32s; }
 
 /* Trash bin (icon-only) */
@@ -257,6 +267,10 @@ body{
 .key:active{ transform:scale(.96) }
 .key.carried{ outline:2px dashed rgba(0,0,0,.15); outline-offset:2px; }
 
+/* Inventory full shake */
+@keyframes invShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+.inventory.full { animation:invShake .3s }
+
 /* Popup: simple message + actions */
 .popup{ position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.35); }
 .popup.hidden{ display:none; }
@@ -273,7 +287,7 @@ body{
 .btn.primary{ background:#ffe3a3; border-color:#c9a051; }
 .btn.primary:hover{ background:#ffd777; }
 
-/* Gamble bar */
+/* Popup: durability / gamble bar */
 .dur-card{
   min-width:340px; max-width:88vw; background:#fffdf4; border:2px solid #ead8b3; border-radius:16px;
   box-shadow:0 12px 30px rgba(0,0,0,.25); padding:16px 18px; text-align:center;
