@@ -1,4 +1,3 @@
-script.js
 let boards = [];
 let validWords = [];
 let remainingWords = [];
