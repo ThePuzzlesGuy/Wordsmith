@@ -199,7 +199,7 @@ body{
 .lock.peek{ box-shadow:0 0 0 3px rgba(255, 230, 120, .9), 0 0 24px rgba(255, 245, 170, .8) inset; transform:scale(1.02); }
 
 /* ===  safe drop target (match inventory slot size) === */
-#-safe{
+#vault-safe{
   width:56px;
   height:56px;
   flex:0 0 56px;
