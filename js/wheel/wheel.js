@@ -1,11 +1,12 @@
-import { createSpriteImg } from './utils.js';
-import { showMessage } from './ui.js';
-import { spawnKey } from './inventory.js';
-import { openRandomWrong } from './locks.js';
+import { state } from '../state.js';
+import { createSpriteImg } from '../utils.js';
+import { showMessage } from '../ui/ui.js';
+import { spawnKey } from '../inventory/inventory.js';
+import { openRandomWrong } from '../locks/locks.js';
 
-let spinsLeft = 0;                 // spins available while overlay is open
-let wheelAutoReroll = false;       // auto-reroll flag
-let wheelPostCloseTask = null;     // deferred action after overlay closes
+let spinsLeft = 0;
+let wheelAutoReroll = false;
+let wheelPostCloseTask = null;
 
 export function initPrizeWheel(){
   const overlay = document.getElementById('wheel-overlay');
@@ -226,17 +227,14 @@ export function initPrizeWheel(){
 
   closeBtn.addEventListener('click', closeOverlay);
 
-  // Expose
   openPrizeWheel.open = openOverlay;
   draw();
 }
 
-/* helper export */
 export function openPrizeWheel(){
   if (typeof openPrizeWheel.open === 'function') openPrizeWheel.open();
 }
 
-/* ===== apply prize & animations ===== */
 function applyPrize(label){
   switch(label){
     case 'Gold Key': spawnKey('gold'); break;
@@ -308,14 +306,7 @@ export function loseRandomKey(){
 }
 
 function peekScroll(){
-  const wrap = document.getElementById('locks');
-  if (!wrap) return;
-  const all = Array.from(wrap.querySelectorAll('.lock'));
-  const target = all.find(l => l && l.dataset && Number(l.dataset.id) === Number(document.querySelector('[data-id]').dataset?.id)) || null;
-
-  // more reliable: use dataset from lock row
-  const hidden = all.find(l => Number(l.dataset.id) === Number(document.querySelector('.lock[data-type]')?.dataset?.id));
-  const el = hidden || target;
+  const el = document.querySelector(`.lock[data-id="${state.hiddenLockId}"]`);
   if (el){
     el.classList.add('peek');
     setTimeout(()=> el.classList.remove('peek'), 1600);
