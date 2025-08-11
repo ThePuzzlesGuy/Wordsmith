@@ -1,0 +1,37 @@
+import { installImageFallbacks } from './utils.js';
+import { loadBoards, setupBoard, endSelect } from './board.js';
+import { sizeLocksRow } from './locks.js';
+import { setupDragAndDrop } from './inventory.js';
+import { updateProgressUI, hidePopup } from './ui.js';
+import { initPrizeWheel } from './wheel.js';
+import { initForge } from './forge.js';
+
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadBoards();
+  setupBoard(false);
+  setupDragAndDrop();
+  initForge();
+
+  const pop = document.getElementById('popup');
+  pop?.addEventListener('click', (e) => {
+    if (e.target.id === 'popup' && pop.dataset.dismiss !== 'locked') hidePopup();
+  });
+
+  window.addEventListener('resize', sizeLocksRow);
+  updateProgressUI();
+
+  ['mouseup','pointerup','touchend'].forEach(ev =>
+    document.addEventListener(ev, endSelect)
+  );
+
+  // Init wheel + path fallbacks
+  initPrizeWheel();
+  installImageFallbacks();
+});
+
+/* decoupled flow events */
+document.addEventListener('game:reset', () => setupBoard(false));
+document.addEventListener('game:restart', (e) => {
+  const restartSame = !!(e.detail && e.detail.restartSame);
+  setupBoard(restartSame);
+});
