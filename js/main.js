@@ -1,11 +1,12 @@
-<script src="js/board/boards.js"></script>
-<script type="module">
-import { loadBoards, setupBoard, endSelect } from './js/board/board.js';
-import { sizeLocksRow } from './js/locks/locks.js';
-import { setupDragAndDrop } from './js/inventory/inventory.js';
-import { initPrizeWheel } from './js/wheel/wheel.js';
-import { installImageFallbacks } from './js/utils.js';
-import './js/state.js';
+// js/main.js
+import { loadBoards, setupBoard, endSelect } from './board/board.js';
+import { sizeLocksRow } from './locks/locks.js';
+import { setupDragAndDrop } from './inventory/inventory.js';
+import { initPrizeWheel } from './wheel/wheel.js';
+import { updateProgressUI } from './progression/progression.js';
+import { hidePopup } from './ui/ui.js';
+import { installImageFallbacks } from './utils.js';
+import './state.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadBoards();
@@ -13,36 +14,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupDragAndDrop();
   initPrizeWheel();
   installImageFallbacks();
-  window.addEventListener('resize', sizeLocksRow);
-  ['mouseup','pointerup','touchend'].forEach(ev =>
-    document.addEventListener(ev, endSelect)
-  );
-});
 
-document.addEventListener('game:reset', () => setupBoard(false));
-document.addEventListener('game:restart', e =>
-  setupBoard(!!(e.detail && e.detail.restartSame))
-);
-</script>
-
-  const pop = document.getElementById('popup');
-  pop?.addEventListener('click', (e) => {
-    if (e.target.id === 'popup' && pop.dataset.dismiss !== 'locked') hidePopup();
-  });
-
+  // UI wiring
   window.addEventListener('resize', sizeLocksRow);
   updateProgressUI();
-
-  ['mouseup','pointerup','touchend'].forEach(ev =>
+  ['mouseup', 'pointerup', 'touchend'].forEach(ev =>
     document.addEventListener(ev, endSelect)
   );
 
-  // Init wheel + path fallbacks
-  initPrizeWheel();
-  installImageFallbacks();
+  // Dismiss popup when clicking the backdrop (unless locked)
+  const pop = document.getElementById('popup');
+  if (pop) {
+    pop.addEventListener('click', (e) => {
+      if (e.target.id === 'popup' && pop.dataset.dismiss !== 'locked') {
+        hidePopup();
+      }
+    });
+  }
 });
 
-/* decoupled flow events */
+// Soft restart hooks
 document.addEventListener('game:reset', () => setupBoard(false));
 document.addEventListener('game:restart', (e) => {
   const restartSame = !!(e.detail && e.detail.restartSame);
