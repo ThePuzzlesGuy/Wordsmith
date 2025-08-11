@@ -897,7 +897,6 @@ function initPrizeWheel(){
       case 'Gold Key': return 'You won a Gold Key!';
       case 'Stone Key': return 'You won a Stone Key!';
       case 'Wooden Key': return 'You won a Wooden Key!';
-      case 'Combine 2 Keys': return 'Two keys combined!';
       case 'Lose a Key': return 'You lost a random key.';
       case 'Reveal Hint': return 'One wrong lock revealed.';
       case 'Scroll Peek': return 'You peeked at the scroll lock!';
