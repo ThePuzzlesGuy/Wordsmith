@@ -558,7 +558,7 @@ function setupDragAndDrop() {
     openPrizeWheel();      // open the wheel
   });
 
-  // NEW: Dedicated vault slot only accepts the vault key
+  // Dedicated vault slot only accepts the vault key
   vaultSlot.addEventListener('dragenter', () => vaultSlot.classList.add('hover'));
   vaultSlot.addEventListener('dragleave', () => vaultSlot.classList.remove('hover'));
   vaultSlot.addEventListener('drop', e => {
@@ -872,15 +872,7 @@ function initPrizeWheel(){
     {label:"Lose a Key",weight:2}
   ];
 
-  let angle = 0, spinning=false;
-
-  function drawPointer(){
-    const tipR=R*0.82, baseR=R*0.92, w=R*0.06, ax=POINTER_ANGLE;
-    const nx=Math.cos(ax), ny=Math.sin(ax), tx=-ny, ty=nx;
-    const tip={x:C.x+nx*tipR,y:C.y+ny*tipR};
-    const bl={x:C.x+nx*baseR+tx*w,y+C.y+ny*baseR+ty*w};
-  }
-  // (Pointer drawing code is defined later inside draw())
+  let angle = 0;
 
   function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -931,19 +923,17 @@ function initPrizeWheel(){
 
     const start=performance.now(), dur=3800;
     const ease=t=>1-Math.pow(1-t,3);
-    let spinning=true;
-    const canvasLocal=canvas; // avoid closure confusion
 
     document.getElementById('spinBtn').disabled=true;
     document.getElementById('safeDoor').classList.remove("open","show");
-    canvasLocal.classList.remove('hidden');
+    canvas.classList.remove('hidden');
 
     (function loop(now){
       const t = Math.max(0, Math.min(1, (now-start)/dur));
       angle = current + (target-current) * ease(t);
       draw();
       if (t<1){ requestAnimationFrame(loop); }
-      else { angle=targetAngleBase; draw(); document.getElementById('spinBtn').disabled=false; spinning=false; revealPrize(PRIZES[index]); }
+      else { angle=targetAngleBase; draw(); document.getElementById('spinBtn').disabled=false; revealPrize(PRIZES[index]); }
     })(performance.now());
   }
 
@@ -966,12 +956,9 @@ function initPrizeWheel(){
     const prev = document.getElementById('prizeImg');
     if (prev) prev.replaceWith(newImg);
 
-    const canvasLocal = document.getElementById('wheel-canvas');
-    const safeDoorLocal = document.getElementById('safeDoor');
-
-    canvasLocal.classList.add("hidden");
-    safeDoorLocal.classList.add("show");
-    requestAnimationFrame(()=>safeDoorLocal.classList.add("open"));
+    canvas.classList.add("hidden");
+    safeDoor.classList.add("show");
+    requestAnimationFrame(()=>safeDoor.classList.add("open"));
 
     applyPrize(p.label);
     updateButtons();
@@ -983,8 +970,8 @@ function initPrizeWheel(){
     if (window._wheelAutoReroll) {
       setTimeout(() => {
         window._wheelAutoReroll = false;
-        safeDoorLocal.classList.remove('open','show');
-        canvasLocal.classList.remove('hidden');
+        safeDoor.classList.remove('open','show');
+        canvas.classList.remove('hidden');
         const i = pickWeightedIndex();
         spinToIndex(i);
       }, 950);
@@ -1011,13 +998,13 @@ function initPrizeWheel(){
     spinsLeft = 1;
     overlay.classList.remove('hidden');
     overlay.setAttribute('aria-hidden','false');
-    document.getElementById('wheel-canvas').classList.remove('hidden');
-    document.getElementById('safeDoor').classList.remove('open','show');
+    canvas.classList.remove('hidden');
+    safeDoor.classList.remove('open','show');
     draw();
     updateButtons();
   }
   function closeOverlay(){
-    document.getElementById('safeDoor').classList.remove('open','show');
+    safeDoor.classList.remove('open','show');
     overlay.classList.add('hidden');
     overlay.setAttribute('aria-hidden','true');
     spinsLeft = 0;
@@ -1025,32 +1012,29 @@ function initPrizeWheel(){
   }
 
   function updateButtons(){
-    const safeDoorLocal = document.getElementById('safeDoor');
-    const spinBtnLocal = document.getElementById('spinBtn');
-    const closeBtnLocal = document.getElementById('wheelCloseBtn');
-
-    if (safeDoorLocal.classList.contains('open')) {
+    if (safeDoor.classList.contains('open')) {
       if (spinsLeft > 0) {
-        spinBtnLocal.textContent = 'Spin again';
-        spinBtnLocal.disabled = false;
-        closeBtnLocal.style.display = 'none';
+        spinBtn.textContent = 'Spin again';
+        spinBtn.disabled = false;
+        closeBtn.style.display = 'none';
       } else {
-        spinBtnLocal.textContent = 'Spin';
-        spinBtnLocal.disabled = true;
-        closeBtnLocal.style.display = 'inline-flex';
+        spinBtn.textContent = 'Spin';
+        spinBtn.disabled = true;
+        closeBtn.style.display = 'inline-flex';
       }
     } else {
-      spinBtnLocal.textContent = 'Spin';
-      spinBtnLocal.disabled = spinsLeft <= 0;
-      closeBtnLocal.style.display = 'none';
+      spinBtn.textContent = 'Spin';
+      spinBtn.disabled = spinsLeft <= 0;
+      closeBtn.style.display = 'none';
     }
   }
 
-  document.getElementById('spinBtn').addEventListener('click', ()=>{
-    if (document.getElementById('safeDoor').classList.contains('open')) {
+  spinBtn.addEventListener('click', ()=>{
+    if (safeDoor.classList.contains('open')) {
       if (spinsLeft > 0) {
-        document.getElementById('safeDoor').classList.remove('open','show');
-        document.getElementById('wheel-canvas').classList.remove('hidden');
+        safeDoor.classList.remove('open','show');
+        canvas.classList.remove('hidden');
+        updateButtons();
       }
       return;
     }
@@ -1059,9 +1043,10 @@ function initPrizeWheel(){
     spinsLeft -= 1;
     const i = pickWeightedIndex();
     spinToIndex(i);
+    updateButtons();
   });
 
-  document.getElementById('wheelCloseBtn').addEventListener('click', closeOverlay);
+  closeBtn.addEventListener('click', closeOverlay);
 
   window.openPrizeWheel = function(){ openOverlay(); };
 
@@ -1093,6 +1078,7 @@ function loseRandomKey(){
   const keys = Array.from(keyGrid.querySelectorAll('.key'));
   if (keys.length === 0) return;
 
+  // Reset and light everyone up
   keys.forEach(k => {
     k.classList.remove('inv-dim','inv-doomed','inv-lit');
     k.classList.add('inv-lit');
@@ -1117,11 +1103,11 @@ function loseRandomKey(){
     return;
   }
 
-  const order = shuffle(keys.slice());
-  const doomed = order[order.length - 1];
+  const order = shuffle(keys.slice());     // random elimination order
+  const doomed = order[order.length - 1];  // last remaining will be deleted
   let i = 0;
 
-  const stepTime = 380;
+  const stepTime = 380; // slower dim pace
   function step(){
     if (i < order.length - 1) {
       const k = order[i++];
@@ -1129,12 +1115,13 @@ function loseRandomKey(){
       k.classList.add('inv-dim');
       setTimeout(step, stepTime);
     } else {
+      // pause on the final highlighted key, then pop it
       setTimeout(() => {
         doomed.classList.add('inv-doomed');
         doomed.classList.remove('inv-lit');
         setTimeout(() => {
           doomed.remove();
-          setTimeout(clearHighlights, 80);
+          setTimeout(clearHighlights, 80); // restore remaining to normal
         }, 320);
       }, 360);
     }
@@ -1149,6 +1136,7 @@ function combineTwoKeys(){
 
   if (byType.wood.length >= 2){ byType.wood[0].remove(); byType.wood[1].remove(); spawnKey('stone'); return; }
   if (byType.stone.length >= 2){ byType.stone[0].remove(); byType.stone[1].remove(); spawnKey('gold'); return; }
+  // fallback if no pair: give a wooden key
   spawnKey('wood');
 }
 
