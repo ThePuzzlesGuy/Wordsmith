@@ -3,7 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Locks & Letters</title>
+  <title>LOCKS & LETTERS</title>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/locks.css">
+  <link rel="stylesheet" href="css/board.css">
+  <link rel="stylesheet" href="css/inventory.css">
+  <link rel="stylesheet" href="css/forge.css">
+  <link rel="stylesheet" href="css/sidebar.css">
+  <link rel="stylesheet" href="css/popup.css">
+  <link rel="stylesheet" href="css/wheel.css">
 </head>
 <body>
   <div class="topbar">
@@ -25,7 +35,7 @@
         </div>
       </div>
 
-      <div class="inventory-dock" style="display:flex;justify-content:center;align-items:center;gap:18px;margin:16px 0 28px;">
+      <div class="inventory-dock">
         <div class="inventory" id="inventory" aria-label="Inventory">
           <div class="key-grid" id="keys">
             <div class="inv-slot"></div>
@@ -111,17 +121,10 @@
     </div>
   </div>
 
+  <!-- Data first -->
   <script src="data/boards.js"></script>
 
-  <script type="module" src="js/state.js"></script>
-  <script type="module" src="js/utils.js"></script>
-  <script type="module" src="js/ui.js"></script>
-  <script type="module" src="js/inventory.js"></script>
-  <script type="module" src="js/locks.js"></script>
-  <script type="module" src="js/forge.js"></script>
-  <script type="module" src="js/progression.js"></script>
-  <script type="module" src="js/wheel.js"></script>
-  <script type="module" src="js/board.js"></script>
+  <!-- App entry (ES modules import the rest) -->
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
