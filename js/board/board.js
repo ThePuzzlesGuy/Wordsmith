@@ -10,8 +10,14 @@ export async function loadBoards() {
     state.boards = window.BOARDS;
     return;
   }
-  const res = await fetch('boards.json');
-  state.boards = await res.json();
+
+  try {
+    const data = await import('./boards.json', { assert: { type: 'json' } });
+    state.boards = data.default;
+  } catch {
+    const res = await fetch(new URL('./boards.json', import.meta.url));
+    state.boards = await res.json();
+  }
 }
 
 export function setupBoard(restartSame = false) {
