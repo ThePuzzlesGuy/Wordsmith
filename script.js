@@ -802,10 +802,9 @@ function initPrizeWheel(){
     "Wooden Key":"key_wood.png",
     "Combine 2 Keys":"lock_wood.png",
     "Lose a Key":"lose_key.png",
-    "Reveal Hint":"scroll.png",
+    "Reveal Hint":"unlock.png",
     "Scroll Peek":"scroll.png",
-    "Reroll":"key_pick.png",
-    "+1 Spin":"heart.png"
+    "Reroll":"safe.png"
   };
 
   const PRIZES=[
@@ -819,7 +818,6 @@ function initPrizeWheel(){
     {label:"Reroll",weight:3},
     {label:"Lose a Key",weight:2},
     {label:"Stone Key",weight:5},
-    {label:"+1 Spin",weight:3},
     {label:"Lose a Key",weight:2}
   ];
 
