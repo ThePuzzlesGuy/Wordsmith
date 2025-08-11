@@ -728,7 +728,7 @@ function showGambleBar(successChance, resolve){
 
    // Animate cursor ping-pong then ease into a final stop.
   const width = bar.getBoundingClientRect().width || 320; // <- dynamic width
-  const speedHz = 3.2;
+  const speedHz = 1.2;
   const brakeMs = 520;
   let start = performance.now();
   const minStop = 1600, maxStop = 2600;
