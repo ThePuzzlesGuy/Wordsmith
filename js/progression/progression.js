@@ -1,5 +1,5 @@
-import { state } from './state.js';
-import { showMessage, showContinue, updateProgressUI } from './ui.js';
+import { state } from '../state.js';
+import { showMessage, showContinue, updateProgressUI } from '../ui/ui.js';
 
 export function maybeCheckLose(){
   if (state.resolvingLoss) return;
@@ -21,7 +21,6 @@ export function maybeCheckLose(){
         <div class="inv-slot"></div>`;
       state.lives = 3; state.scrolls = 0; updateProgressUI();
       state.resolvingLoss = false;
-      // tell main to reset with a fresh board
       document.dispatchEvent(new CustomEvent('game:restart', { detail:{ restartSame:false } }));
     }, 1200);
   } else {
@@ -30,7 +29,6 @@ export function maybeCheckLose(){
       "Continue"
     ).then(() => {
       state.resolvingLoss = false;
-      // restart same board
       document.dispatchEvent(new CustomEvent('game:restart', { detail:{ restartSame:true } }));
     });
   }
