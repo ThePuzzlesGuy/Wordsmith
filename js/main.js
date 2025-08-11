@@ -1,10 +1,11 @@
+<script src="js/board/boards.js"></script>
 <script type="module">
-import { loadBoards, setupBoard, endSelect } from './board/board.js';
-import { sizeLocksRow } from './locks/locks.js';
-import { setupDragAndDrop } from './inventory/inventory.js';
-import { initPrizeWheel } from './wheel/wheel.js';
-import { installImageFallbacks } from './utils.js';
-import './state.js';
+import { loadBoards, setupBoard, endSelect } from './js/board/board.js';
+import { sizeLocksRow } from './js/locks/locks.js';
+import { setupDragAndDrop } from './js/inventory/inventory.js';
+import { initPrizeWheel } from './js/wheel/wheel.js';
+import { installImageFallbacks } from './js/utils.js';
+import './js/state.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadBoards();
@@ -13,8 +14,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   initPrizeWheel();
   installImageFallbacks();
   window.addEventListener('resize', sizeLocksRow);
-  ['mouseup','pointerup','touchend'].forEach(ev => document.addEventListener(ev, endSelect));
+  ['mouseup','pointerup','touchend'].forEach(ev =>
+    document.addEventListener(ev, endSelect)
+  );
 });
+
+document.addEventListener('game:reset', () => setupBoard(false));
+document.addEventListener('game:restart', e =>
+  setupBoard(!!(e.detail && e.detail.restartSame))
+);
 </script>
 
   const pop = document.getElementById('popup');
