@@ -76,6 +76,17 @@ body{
 #letter-grid, #letter-grid .letter{ user-select:none; -webkit-user-select:none; -ms-user-select:none; -moz-user-select:none; -webkit-tap-highlight-color:transparent; touch-action:none; }
 .no-select{ user-select:none!important; -webkit-user-select:none!important; }
 #letter-grid img, #locks img{ -webkit-user-drag:none; user-drag:none; }
+/* --- Vault badge on a LETTER tile (small, top-right corner) --- */
+#letter-grid .letter { position: relative; }
+#letter-grid .letter .vault-badge{
+  position:absolute;
+  right:2px;
+  top:2px;
+  width:18px;
+  height:18px;
+  pointer-events:none;
+  z-index:2;
+}
 
 /* ===== Sidebar ===== */
 .sidebar{ display:flex; flex-direction:column; gap:16px; }
@@ -199,6 +210,8 @@ body{
 .lock.peek{ box-shadow:0 0 0 3px rgba(255, 230, 120, .9), 0 0 24px rgba(255, 245, 170, .8) inset; transform:scale(1.02); }
 
 /* ===  safe drop target (match inventory slot size) === */
+
+/* --- Vault SAFE drop target (same footprint as inventory slots) --- */
 #vault-safe{
   width:56px;
   height:56px;
@@ -210,27 +223,42 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-  position:relative;
 }
-
-/* hover feedback, same vibe as forge slots */
 #vault-safe.hover{
   background:#fff3d2;
   outline:3px dashed rgba(169,123,42,.5);
   outline-offset:2px;
 }
-
-/* scale the vault sprite to the same visual footprint as keys */
 #vault-safe img{
   width:48px;
   height:48px;
   max-width:48px;
   max-height:48px;
   object-fit:contain;
+  display:block;
   pointer-events:none;
 }
 
-/* hide any hint/label inside the safe */
+/* --- Vault KEY in inventory (badge small in the key’s corner) --- */
+.key.vault-key{ position:relative; }              /* the wrapper div you created */
+.key.vault-key .key-inner{
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:contain;
+  border-radius:10px;
+}
+.key.vault-key .badge-vault{
+  position:absolute;
+  right:2px;
+  top:2px;
+  width:14px;
+  height:14px;
+  pointer-events:none;
+  z-index:2;
+}
+
+/* Hide any hint text you might have placed inside the safe */
 #vault-safe .safe-text,
 #vault-safe .vault-hint,
 #vault-safe .hint,
