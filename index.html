@@ -2,50 +2,42 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Wordsmith</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Locks & Letters</title>
 
-  <!-- CSS (your files, in a safe order) -->
-  <link rel="stylesheet" href="css/base.css">
-  <link rel="stylesheet" href="css/locks.css">
-  <link rel="stylesheet" href="css/board.css">
-  <link rel="stylesheet" href="css/inventory.css">
-  <link rel="stylesheet" href="css/forge.css">
-  <link rel="stylesheet" href="css/sidebar.css">
-  <link rel="stylesheet" href="css/popup.css">
-  <link rel="stylesheet" href="css/wheel.css">
+  <!-- If you have a single CSS file, link it here. Otherwise keep your existing links. -->
+  <!-- <link rel="stylesheet" href="styles.css"> -->
 </head>
 <body>
-
-  <!-- Top bar -->
-  <header class="topbar">
+  <!-- Topbar -->
+  <div class="topbar">
     <div class="topbar-inner">
-      <h1 class="title">WORDSMITH</h1>
-      <button class="icon-btn" id="helpBtn">?</button>
+      <h1 class="title">LOCKS & LETTERS</h1>
+      <div>
+        <button class="icon-btn" id="helpBtn">?</button>
+      </div>
     </div>
-  </header>
+  </div>
 
   <!-- App layout -->
-  <main id="app">
-    <!-- LEFT: play area -->
-    <section class="play-area">
-
+  <div id="app">
+    <div class="play-area">
       <!-- Locks row -->
       <div class="locks-strip">
-        <div class="locks" id="locks" aria-label="Locks row"></div>
+        <div class="locks" id="locks"></div>
       </div>
 
-      <!-- Parchment board -->
+      <!-- Board -->
       <div class="board-wrap">
         <div class="parchment">
-          <div id="letter-grid" class="grid" aria-label="Letter grid"></div>
+          <div id="letter-grid" class="grid" aria-label="Letter Grid"></div>
         </div>
       </div>
 
-      <!-- Inventory dock (inventory + vault safe) -->
-      <div class="inventory-dock" style="display:flex; justify-content:center; align-items:center; gap:18px;">
-        <div id="inventory" class="inventory" aria-label="Inventory">
-          <div id="keys" class="key-grid">
+      <!-- Inventory dock (centered under the board) -->
+      <div class="inventory-dock" style="display:flex; justify-content:center; align-items:center; gap:18px; margin:16px 0 28px;">
+        <div class="inventory" id="inventory" aria-label="Inventory">
+          <div class="key-grid" id="keys">
             <div class="inv-slot"></div>
             <div class="inv-slot"></div>
             <div class="inv-slot"></div>
@@ -54,102 +46,80 @@
           </div>
         </div>
 
-        <!-- Vault safe drop target (same footprint as an inventory slot) -->
+        <!-- Vault safe drop target (same footprint as inventory slots) -->
         <div id="vault-safe" aria-label="Vault Safe">
-          <img src="sprites/vault.png" alt="Vault">
+          <img alt="Safe" src="sprites/vault.png" />
         </div>
       </div>
+    </div>
 
-    </section>
-
-    <!-- RIGHT: sidebar -->
+    <!-- Sidebar -->
     <aside class="sidebar">
-
       <!-- Progress -->
       <div class="card progress-card">
-        <div class="hearts" id="hearts">
-          <img class="heart" src="sprites/heart.png" alt="heart">
-          <img class="heart" src="sprites/heart.png" alt="heart">
-          <img class="heart" src="sprites/heart.png" alt="heart">
+        <div>
+          <div class="theme-label">Theme</div>
+          <div id="theme" class="theme-value">—</div>
         </div>
         <div class="scrolls">
-          <img class="scroll-icon" src="sprites/scroll.png" alt="">
-          <span class="scroll-count" id="scroll-count">0</span>
+          <img class="scroll-icon" src="sprites/scroll.png" alt="" />
+          <span id="scroll-count" class="scroll-count">0</span>
+        </div>
+        <div class="hearts" id="hearts" style="grid-column: 1 / -1; margin-top:8px;">
+          <img class="heart" src="sprites/heart.png" alt="heart" />
+          <img class="heart" src="sprites/heart.png" alt="heart" />
+          <img class="heart" src="sprites/heart.png" alt="heart" />
         </div>
       </div>
 
-      <!-- Theme / legend -->
-      <div class="card theme-card">
-        <div class="theme-label">Theme</div>
-        <div class="theme-value" id="theme">—</div>
-        <div class="legend">
-          <ul>
-            <li><img class="legend-key" src="sprites/key_wood.png" alt=""> 3 Letters</li>
-            <li><img class="legend-key" src="sprites/key_stone.png" alt=""> 4 Letters</li>
-            <li><img class="legend-key" src="sprites/key_gold.png" alt=""> 5+ Letters</li>
-          </ul>
-        </div>
-      </div>
-
-      <!-- Smith / forge -->
-      <div id="smith" class="card smith-card">
+      <!-- Smithing / Forge -->
+      <div class="card smith-card" id="smith">
         <div class="smith-top">
           <div class="drop-slot" data-slot="a">
-            <span class="slot-hint">Drop<br>key</span>
+            <span class="slot-hint">Drop key</span>
           </div>
           <div class="plus-icon">+</div>
           <div class="drop-slot" data-slot="b">
-            <span class="slot-hint">Drop<br>key</span>
+            <span class="slot-hint">Drop key</span>
           </div>
         </div>
         <button id="forge-btn" class="btn forge-btn" disabled>Forge</button>
-
-        <div id="trash" class="trash-bin" style="margin-top:12px;">
-          <span class="trash-icon">🗑️</span>
-        </div>
       </div>
 
+      <!-- Trash -->
+      <div class="card trash-bin" id="trash" aria-label="Trash">
+        <div class="trash-icon">🗑️</div>
+      </div>
     </aside>
-  </main>
+  </div>
 
-  <!-- Popup (messages / confirms) -->
-  <div id="popup" class="popup hidden" role="dialog" aria-modal="true">
+  <!-- Popup -->
+  <div id="popup" class="popup hidden" aria-hidden="true">
     <div class="popup-card">
       <div id="popup-text">Message</div>
       <div id="popup-actions" class="popup-actions"></div>
     </div>
   </div>
 
-  <!-- (Optional) Durability UI – harmless if unused -->
-  <div id="durability-popup" class="popup hidden">
-    <div class="dur-card">
-      <div class="dur-title">Checking durability…</div>
-      <div class="dur-bar">
-        <div class="dur-red"></div>
-        <div class="dur-green"></div>
-        <div id="dur-cursor" class="dur-cursor"></div>
-      </div>
-      <div id="dur-caption" class="dur-caption"></div>
-    </div>
-  </div>
-
-  <!-- Wheel overlay -->
+  <!-- Prize Wheel Overlay -->
   <div id="wheel-overlay" class="wheel-overlay hidden" aria-hidden="true">
     <div class="wheel-stage">
       <canvas id="wheel-canvas" width="600" height="600"></canvas>
 
-      <!-- safe door / prize reveal -->
+      <!-- Safe door / prize reveal -->
       <div id="safeDoor" class="safeDoor">
-        <div class="plate"></div>
         <div class="interior">
           <div class="prize">
-            <img id="prizeImg" src="sprites/key_gold.png" alt="Prize">
+            <img id="prizeImg" src="sprites/key_gold.png" alt="prize" />
           </div>
-          <div class="bolts">
-            <div class="bolt"></div><div class="bolt"></div><div class="bolt"></div>
-          </div>
-          <div class="lip"></div>
         </div>
+        <div class="plate"></div>
+        <div class="bolts">
+          <div class="bolt"></div>
+          <div class="bolt"></div>
+          <div class="bolt"></div>
+        </div>
+        <div class="lip"></div>
       </div>
 
       <div class="wheel-controls">
@@ -158,18 +128,9 @@
       </div>
     </div>
   </div>
-  
-  <script src="js/board/boards.js" defer></script>
-  <script src="js/utils.js" defer></script>
-  <script src="js/state.js" defer></script>
-  <script src="js/ui/ui.js" defer></script>
-  <script src="js/board/board.js" defer></script>
-  <script src="js/locks/locks.js" defer></script>
-  <script src="js/inventory/inventory.js" defer></script>
-  <script src="js/inventory/forge.js" defer></script>
-  <script src="js/progression/progression.js" defer></script>
-  <script src="js/wheel/wheel.js" defer></script>
 
-  <script src="js/main.js" defer></script>
+  <script src="data/boards.js"></script>
+
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
