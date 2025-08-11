@@ -3,53 +3,61 @@ import { shuffle, createSpriteImg } from './utils.js';
 import { buildDynamicLocks } from './locks.js';
 import { showMessage } from './ui.js';
 import { maybeCheckLose } from './progression.js';
-import { recallForgeKeysToInventory } from './inventory.js';
+import { recallForgeKeysToInventory, spawnKey, spawnVaultKey } from './inventory.js';
 
 /* ===== Data ===== */
 export async function loadBoards() {
-  const res = await fetch("boards.json");
+  // use JS-defined BOARDS if it exists; otherwise fetch JSON
+  if (Array.isArray(window.BOARDS)) {
+    state.boards = window.BOARDS;
+    return;
+  }
+  const res = await fetch('boards.json');
   state.boards = await res.json();
 }
 
 /* ===== Board + Locks ===== */
-export function setupBoard(restartSame=false) {
+export function setupBoard(restartSame = false) {
   state.resolvingLoss = false;
 
   if (!restartSame) {
-    document.querySelectorAll('#keys .key').forEach(k => {
-      k.dataset.carried = "true";
+    document.querySelectorAll('#keys .key').forEach((k) => {
+      k.dataset.carried = 'true';
       k.classList.add('carried');
     });
   }
 
   if (!(restartSame && state.currentBoard)) {
     let pool = state.boards.filter((_, i) => !state.completedBoards.includes(i));
-    if (pool.length === 0) { state.completedBoards = []; pool = state.boards.slice(); }
+    if (pool.length === 0) {
+      state.completedBoards = [];
+      pool = state.boards.slice();
+    }
     state.currentBoard = pool[Math.floor(Math.random() * pool.length)];
     const actualIndex = state.boards.indexOf(state.currentBoard);
     state.completedBoards.push(actualIndex);
   }
 
-  document.getElementById("theme").textContent = state.currentBoard.theme;
+  document.getElementById('theme').textContent = state.currentBoard.theme;
 
-  state.remainingWords = state.currentBoard.words.map(w => w.toUpperCase());
+  state.remainingWords = state.currentBoard.words.map((w) => w.toUpperCase());
   state.validWords = state.remainingWords.slice();
 
-  const gridEl = document.getElementById("letter-grid");
-  gridEl.innerHTML = "";
+  const gridEl = document.getElementById('letter-grid');
+  gridEl.innerHTML = '';
   const cols = state.currentBoard.cols || Math.sqrt(state.currentBoard.grid.length) || 5;
   gridEl.style.gridTemplateColumns = `repeat(${cols}, 74px)`;
 
   for (let i = 0; i < state.currentBoard.grid.length; i++) {
-    const div = document.createElement("div");
-    div.className = "letter";
+    const div = document.createElement('div');
+    div.className = 'letter';
     div.textContent = state.currentBoard.grid[i];
     div.dataset.index = i;
-    div.dataset.active = "true";
-    div.addEventListener("mousedown", startSelect);
-    div.addEventListener("pointerdown", startSelect);
-    div.addEventListener("mouseenter", continueSelect);
-    div.addEventListener("pointerenter", continueSelect);
+    div.dataset.active = 'true';
+    div.addEventListener('mousedown', startSelect);
+    div.addEventListener('pointerdown', startSelect);
+    div.addEventListener('mouseenter', continueSelect);
+    div.addEventListener('pointerenter', continueSelect);
     gridEl.appendChild(div);
   }
 
@@ -59,15 +67,18 @@ export function setupBoard(restartSame=false) {
   placeVaultIcon();
 }
 
-export function placeVaultIcon(){
+export function placeVaultIcon() {
   const grid = document.getElementById('letter-grid');
   if (!grid) return;
-  grid.querySelectorAll('.vault-badge').forEach(el => el.remove());
+  grid.querySelectorAll('.vault-badge').forEach((el) => el.remove());
 
-  const tiles = Array.from(grid.querySelectorAll('.letter')).filter(el => el.dataset.active === "true");
-  if (tiles.length === 0) { state.vaultIndex = -1; return; }
+  const tiles = Array.from(grid.querySelectorAll('.letter')).filter((el) => el.dataset.active === 'true');
+  if (tiles.length === 0) {
+    state.vaultIndex = -1;
+    return;
+  }
 
-  const pick = tiles[Math.floor(Math.random()*tiles.length)];
+  const pick = tiles[Math.floor(Math.random() * tiles.length)];
   state.vaultIndex = Number(pick.dataset.index);
 
   const img = createSpriteImg('vault.png', 'Vault');
@@ -77,7 +88,7 @@ export function placeVaultIcon(){
 
 /* ===== Letter drag-select ===== */
 export function startSelect(e) {
-  if (e.target.dataset.active !== "true") return;
+  if (e.target.dataset.active !== 'true') return;
   e.preventDefault();
   recallForgeKeysToInventory();
 
@@ -85,7 +96,7 @@ export function startSelect(e) {
   document.body.classList.add('no-select');
 
   state.currentPath = [e.target];
-  e.target.style.background = "#e8d8b7";
+  e.target.style.background = '#e8d8b7';
   state.selectedLetters = [e.target.textContent];
 }
 
@@ -94,10 +105,10 @@ export function continueSelect(e) {
     state.isSelecting &&
     state.currentPath.length > 0 &&
     !state.currentPath.includes(e.target) &&
-    e.target.dataset.active === "true"
+    e.target.dataset.active === 'true'
   ) {
     state.currentPath.push(e.target);
-    e.target.style.background = "#e8d8b7";
+    e.target.style.background = '#e8d8b7';
     state.selectedLetters.push(e.target.textContent);
   }
 }
@@ -106,7 +117,7 @@ export function endSelect() {
   if (!state.isSelecting) return;
   state.isSelecting = false;
 
-  const word = state.selectedLetters.join("");
+  const word = state.selectedLetters.join('');
 
   if (state.selectedLetters.length >= 3 && state.validWords.includes(word)) {
     const idx = state.remainingWords.indexOf(word);
@@ -121,7 +132,7 @@ export function endSelect() {
     invalidWordFeedback(state.currentPath);
   }
 
-  state.currentPath.forEach(el => el.style.background = "");
+  state.currentPath.forEach((el) => (el.style.background = ''));
   state.selectedLetters = [];
   state.currentPath = [];
   document.body.classList.remove('no-select');
@@ -131,34 +142,32 @@ export function endSelect() {
 
 function giveKey(len) {
   const type = len === 3 ? 'wood' : len === 4 ? 'stone' : 'gold';
-  const { spawnKey } = awaitImport('./inventory.js');
   spawnKey(type);
 }
 
 export function markUsedTiles(tiles) {
-  tiles.forEach(el => {
-    el.dataset.active = "false";
-    el.classList.add("used");
+  tiles.forEach((el) => {
+    el.dataset.active = 'false';
+    el.classList.add('used');
   });
 
-  if (state.vaultIndex !== -1 && tiles.some(el => Number(el.dataset.index) === Number(state.vaultIndex))) {
+  if (
+    state.vaultIndex !== -1 &&
+    tiles.some((el) => Number(el.dataset.index) === Number(state.vaultIndex))
+  ) {
     const grid = document.getElementById('letter-grid');
     const badge = grid && grid.querySelector('.vault-badge');
     if (badge) badge.remove();
     state.vaultIndex = -1;
 
-    const { spawnVaultKey } = awaitImport('./inventory.js');
-    spawnVaultKey();
-    showMessage("Vault Key acquired! Drag it to the safe.");
+    spawnVaultKey(); // put a vault key in inventory
+    showMessage('Vault Key acquired! Drag it to the safe.');
   }
 }
 
 export function invalidWordFeedback(tiles) {
-  tiles.forEach(el => {
-    el.classList.add("invalid");
-    setTimeout(() => el.classList.remove("invalid"), 400);
+  tiles.forEach((el) => {
+    el.classList.add('invalid');
+    setTimeout(() => el.classList.remove('invalid'), 400);
   });
 }
-
-/* helper to lazy-import (avoids circular feelings in some bundlers) */
-function awaitImport(path){ return import(path); }
