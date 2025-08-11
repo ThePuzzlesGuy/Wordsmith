@@ -92,6 +92,14 @@
           </div>
         </div>
       </div>
+
+      <!-- NEW: Vault Safe drop target -->
+      <div id="vault-safe" class="vault-safe" aria-label="Vault">
+        <div class="vault-face">
+          <img src="sprites/vault.png" alt="" class="vault-icon">
+          <div class="vault-hint">Drop vault key</div>
+        </div>
+      </div>
     </footer>
   </main>
 
@@ -103,20 +111,7 @@
     </div>
   </div>
 
-  <!-- Popup: durability / gamble bar -->
-  <div id="durability-popup" class="dur-popup hidden">
-    <div class="dur-card">
-      <div class="dur-title">Forge Result</div>
-      <div class="dur-bar">
-        <div class="dur-red"></div>
-        <div class="dur-green"></div>
-        <div class="dur-cursor" id="dur-cursor"></div>
-      </div>
-      <div class="dur-caption" id="dur-caption">Checking durability…</div>
-    </div>
-  </div>
-
-  <div id="message" class="toast" style="display:none;"></div>
+  <!-- REMOVED: durability/forge result popup -->
 
   <!-- === Prize Wheel Overlay (Safe Dial) === -->
   <div id="wheel-overlay" class="wheel-overlay hidden" aria-hidden="true">
