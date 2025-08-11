@@ -1,16 +1,21 @@
+<script type="module">
+import { loadBoards, setupBoard, endSelect } from './board/board.js';
+import { sizeLocksRow } from './locks/locks.js';
+import { setupDragAndDrop } from './inventory/inventory.js';
+import { initPrizeWheel } from './wheel/wheel.js';
 import { installImageFallbacks } from './utils.js';
-import { loadBoards, setupBoard, endSelect } from './board.js';
-import { sizeLocksRow } from './locks.js';
-import { setupDragAndDrop } from './inventory.js';
-import { updateProgressUI, hidePopup } from './ui.js';
-import { initPrizeWheel } from './wheel.js';
-import { initForge } from './forge.js';
+import './state.js';
 
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener('DOMContentLoaded', async () => {
   await loadBoards();
   setupBoard(false);
   setupDragAndDrop();
-  initForge();
+  initPrizeWheel();
+  installImageFallbacks();
+  window.addEventListener('resize', sizeLocksRow);
+  ['mouseup','pointerup','touchend'].forEach(ev => document.addEventListener(ev, endSelect));
+});
+</script>
 
   const pop = document.getElementById('popup');
   pop?.addEventListener('click', (e) => {
