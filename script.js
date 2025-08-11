@@ -726,48 +726,40 @@ function showGambleBar(successChance, resolve){
   overlay.appendChild(card);
   document.body.appendChild(overlay);
 
-  // Animate cursor ping-pong then stop at a random time (uniform), making success probability = green width
-    // Animate cursor ping-pong then ease into a final stop.
-  const width = 320; // matches CSS .dur-bar width
-  const speedHz = 3.2;            // ↓ slower back-and-forth (was ~8.5)
-  const brakeMs = 520;            // how long the cursor eases into its stop
+   // Animate cursor ping-pong then ease into a final stop.
+  const width = bar.getBoundingClientRect().width || 320; // <- dynamic width
+  const speedHz = 3.2;
+  const brakeMs = 520;
   let start = performance.now();
-  const minStop = 1600, maxStop = 2600;   // a little longer window
+  const minStop = 1600, maxStop = 2600;
   const stopAt = start + (minStop + Math.random()*(maxStop-minStop));
   let raf = null;
 
-  // small helper
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
   function step(now){
-    const t = (now - start) / 1000; // seconds
-
-    // normal ping-pong sweep (slower)
+    const t = (now - start) / 1000;
     const x = (Math.sin(t * 2 * Math.PI * speedHz) * 0.5 + 0.5) * width;
-    // while sweeping, no CSS transitions—just set the position directly
+
     cursor.style.transition = 'none';
     cursor.style.left = `${x}px`;
 
     if (now < stopAt){
       raf = requestAnimationFrame(step);
     } else {
-      // Decide success first (keeps probability == green width)
       const redWidth = width * (1 - successChance);
       const success = Math.random() < successChance;
 
-      // Pick a final target close to wherever we were,
-      // but clamped into the correct region so visuals match result.
       const pad = 8;
       const minGreen = redWidth + pad, maxGreen = width - pad;
       const minRed   = pad,           maxRed   = redWidth - pad;
 
-      let target = success
+      const target = success
         ? clamp(x, minGreen, maxGreen)
         : clamp(x, minRed,   maxRed);
 
-      // Ease into the final spot
       caption.textContent = success ? 'Success!' : 'Failed…';
-      cursor.style.transition = `left ${brakeMs}ms cubic-bezier(0.16,1,0.3,1)`; // nice ease-out
+      cursor.style.transition = `left ${brakeMs}ms cubic-bezier(0.16,1,0.3,1)`;
       requestAnimationFrame(() => { cursor.style.left = `${target}px`; });
 
       setTimeout(() => {
@@ -777,6 +769,7 @@ function showGambleBar(successChance, resolve){
     }
   }
   raf = requestAnimationFrame(step);
+}
 
 /* ========== PROGRESSION & FAIL STATE ========== */
 function updateProgressUI(){
