@@ -1,5 +1,3 @@
-import './board/boards.js';
-
 import { loadBoards, setupBoard, endSelect } from './board/board.js';
 import { sizeLocksRow } from './locks/locks.js';
 import { setupDragAndDrop } from './inventory/inventory.js';
