@@ -1,13 +1,11 @@
-import { state, resetTransientState } from './state.js';
-import { shuffle, createSpriteImg } from './utils.js';
-import { buildDynamicLocks } from './locks.js';
-import { showMessage } from './ui.js';
-import { maybeCheckLose } from './progression.js';
-import { recallForgeKeysToInventory, spawnKey, spawnVaultKey } from './inventory.js';
+import { state } from '../state.js';
+import { shuffle, createSpriteImg } from '../utils.js';
+import { buildDynamicLocks } from '../locks/locks.js';
+import { showMessage } from '../ui/ui.js';
+import { maybeCheckLose } from '../progression/progression.js';
+import { recallForgeKeysToInventory, spawnKey, spawnVaultKey } from '../inventory/inventory.js';
 
-/* ===== Data ===== */
 export async function loadBoards() {
-  // use JS-defined BOARDS if it exists; otherwise fetch JSON
   if (Array.isArray(window.BOARDS)) {
     state.boards = window.BOARDS;
     return;
@@ -16,7 +14,6 @@ export async function loadBoards() {
   state.boards = await res.json();
 }
 
-/* ===== Board + Locks ===== */
 export function setupBoard(restartSame = false) {
   state.resolvingLoss = false;
 
@@ -62,8 +59,6 @@ export function setupBoard(restartSame = false) {
   }
 
   buildDynamicLocks(state.currentBoard.words);
-
-  // place the vault badge on a random active tile
   placeVaultIcon();
 }
 
@@ -86,7 +81,6 @@ export function placeVaultIcon() {
   pick.appendChild(img);
 }
 
-/* ===== Letter drag-select ===== */
 export function startSelect(e) {
   if (e.target.dataset.active !== 'true') return;
   e.preventDefault();
@@ -160,7 +154,7 @@ export function markUsedTiles(tiles) {
     if (badge) badge.remove();
     state.vaultIndex = -1;
 
-    spawnVaultKey(); // put a vault key in inventory
+    spawnVaultKey();
     showMessage('Vault Key acquired! Drag it to the safe.');
   }
 }
