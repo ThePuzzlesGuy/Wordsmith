@@ -362,12 +362,15 @@ function markUsedTiles(tiles) {
     el.classList.add("used");
   });
 
+  // If this path used the vault tile, award a Vault Key instead of opening the wheel immediately
   if (vaultIndex !== -1 && tiles.some(el => Number(el.dataset.index) === Number(vaultIndex))) {
     const grid = document.getElementById('letter-grid');
     const badge = grid && grid.querySelector('.vault-badge');
     if (badge) badge.remove();
     vaultIndex = -1;
-    setTimeout(() => openPrizeWheel(), 300);
+
+    spawnVaultKey();                 // put a vault key in inventory
+    showMessage("Vault Key acquired! Drag it to the safe.");
   }
 }
 
@@ -433,6 +436,61 @@ function spawnKey(type){
   emptySlot.appendChild(img);
 }
 
+/* NEW: spawn a special Vault Key (gold key with vault badge) */
+function spawnVaultKey(){
+  const inv = document.getElementById("inventory");
+  const keyGrid = document.getElementById("keys");
+
+  const emptySlot = Array.from(keyGrid.querySelectorAll('.inv-slot')).find(s => !s.querySelector('.key'));
+  if (!emptySlot) {
+    inv.classList.add('full');
+    setTimeout(() => inv.classList.remove('full'), 320);
+    return;
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'key vault-key';
+  wrap.dataset.type = 'vault';
+  wrap.draggable = true;
+
+  const base = createSpriteImg('key_gold.png', 'Vault Key');
+  base.className = 'key-inner';
+  base.draggable = false;
+
+  const badge = createSpriteImg('vault.png', 'Vault');
+  badge.className = 'badge-vault';
+  badge.draggable = false;
+
+  wrap.appendChild(base);
+  wrap.appendChild(badge);
+
+  let dragGhost = null;
+  wrap.addEventListener('dragstart', (e) => {
+    e.dataTransfer.setData('text/plain', 'vault');
+    e.dataTransfer.effectAllowed = 'move';
+
+    dragGhost = wrap.cloneNode(true);
+    dragGhost.style.width = "36px";
+    dragGhost.style.height = "36px";
+    dragGhost.style.maxWidth = "36px";
+    dragGhost.style.maxHeight = "36px";
+    dragGhost.style.position = "absolute";
+    dragGhost.style.top = "-1000px";
+    dragGhost.style.left = "-1000px";
+    dragGhost.style.pointerEvents = "none";
+    document.body.appendChild(dragGhost);
+    try { e.dataTransfer.setDragImage(dragGhost, 18, 18); } catch (_) {}
+
+    wrap.classList.add('dragging');
+  });
+  wrap.addEventListener('dragend', () => {
+    wrap.classList.remove('dragging');
+    if (dragGhost) { dragGhost.remove(); dragGhost = null; }
+  });
+
+  emptySlot.appendChild(wrap);
+}
+
 function resetGame() {
   const grid = document.getElementById("letter-grid");
   grid.style.opacity = 0;
@@ -448,11 +506,13 @@ function setupDragAndDrop() {
   const { a:slotA, b:slotB } = getCombinerSlots();
   const smith = document.getElementById('smith');
   const forgeBtn = document.getElementById('forge-btn');
+  const vaultSafe = document.getElementById('vault-safe');
 
-  [slotA, slotB, trash, keyArea, smith].forEach(area => {
+  [slotA, slotB, trash, keyArea, smith, vaultSafe].forEach(area => {
     area.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
   });
 
+  // Limit smith slots to real keys only (no vault key)
   [slotA, slotB].forEach((slot) => {
     slot.addEventListener('dragenter', () => slot.classList.add('hover'));
     slot.addEventListener('dragleave', () => slot.classList.remove('hover'));
@@ -461,6 +521,8 @@ function setupDragAndDrop() {
       slot.classList.remove('hover');
       const dragging = document.querySelector(".dragging");
       if (!dragging) return;
+      const t = dragging.dataset.type;
+      if (t === 'vault') return;         // do not accept the vault key in the forge
       if (slot.querySelector('.key')) return;
 
       slot.appendChild(dragging);
@@ -489,6 +551,20 @@ function setupDragAndDrop() {
     [slotA, slotB].forEach(s => s.classList.toggle('has-key', !!s.querySelector('.key')));
     updateForgeButton();
     maybeCheckLose();
+  });
+
+  // NEW: Vault Safe drop target
+  vaultSafe.addEventListener('dragenter', () => vaultSafe.classList.add('hover'));
+  vaultSafe.addEventListener('dragleave', () => vaultSafe.classList.remove('hover'));
+  vaultSafe.addEventListener('drop', e => {
+    e.preventDefault();
+    vaultSafe.classList.remove('hover');
+    const dragging = document.querySelector('.dragging');
+    if (!dragging) return;
+    if (dragging.dataset.type !== 'vault') return;
+
+    dragging.remove();     // consume the vault key
+    openPrizeWheel();      // open the wheel
   });
 
   forgeBtn.addEventListener('click', async () => {
@@ -579,6 +655,7 @@ function doCombine(){
 }
 
 /* ========== DURABILITY & GAMBLE ========== */
+// UI removed — keep timing lightweight and resolve the chance
 function runDurabilityCheck(keyType){
   return new Promise(resolve => {
     if (keyType === 'pick') { resolve(true); return; }
@@ -588,42 +665,8 @@ function runDurabilityCheck(keyType){
 }
 function runGamble(successChance){ return new Promise(resolve => { showGambleBar(successChance, resolve); }); }
 function showGambleBar(successChance, resolve){
-  const breakOdds = 1 - successChance;
-  const dur = document.getElementById('durability-popup');
-  const cursor = document.getElementById('dur-cursor');
-  const caption = document.getElementById('dur-caption');
-  const red = document.querySelector('.dur-red');
-  const green = document.querySelector('.dur-green');
-
-  const totalWidth = 320;
-  if (red) red.style.width = `${Math.round(breakOdds * totalWidth)}px`;
-  if (green) green.style.width = `${Math.round(successChance * totalWidth)}px`;
-
-  if (cursor) cursor.style.left = `0px`;
-  if (caption) caption.textContent = "Checking durability…";
-  if (dur) dur.classList.remove('hidden');
-
-  let dir = 1, pos = 0;
-  const speed = 6;
-  const interval = setInterval(() => {
-    pos += dir * speed;
-    if (pos < 0) { pos = 0; dir = 1; }
-    if (pos > totalWidth) { pos = totalWidth; dir = -1; }
-    if (cursor) cursor.style.left = `${pos}px`;
-  }, 16);
-
   const succeed = Math.random() < successChance;
-
-  setTimeout(() => {
-    clearInterval(interval);
-    const min = succeed ? Math.round((1 - successChance) * totalWidth) + 6 : 6;
-    const max = succeed ? totalWidth - 6 : Math.round((1 - successChance) * totalWidth) - 6;
-    const stop = Math.max(6, Math.min(totalWidth-6, Math.floor(min + Math.random()*(max-min))));
-    if (cursor) cursor.style.left = `${stop}px`;
-
-    if (caption) caption.textContent = succeed ? "It holds!" : "It shatters!";
-    setTimeout(() => { if (dur) dur.classList.add('hidden'); resolve(succeed); }, 650);
-  }, 1200);
+  setTimeout(() => resolve(succeed), 220); // tiny delay to feel responsive
 }
 
 /* ========== PROGRESSION & FAIL STATE ========== */
@@ -801,23 +844,19 @@ function initPrizeWheel(){
     "Gold Key":"key_gold.png",
     "Stone Key":"key_stone.png",
     "Wooden Key":"key_wood.png",
-    "Combine 2 Keys":"lock_wood.png",
     "Lose a Key":"lose_key.png",
-    "Reveal Hint":"scroll.png",
+    "Reveal Hint":"lock_gold.png",
     "Scroll Peek":"scroll.png",
-    "Reroll":"key_pick.png",
-    "+1 Spin":"heart.png"
+    "+1 Spin":"vault.png"
   };
 
   const PRIZES=[
     {label:"Gold Key",weight:1},
     {label:"Stone Key",weight:5},
-    {label:"Combine 2 Keys",weight:3},
     {label:"Reveal Hint",weight:3},
     {label:"Lose a Key",weight:2},
     {label:"Wooden Key",weight:4},
     {label:"Scroll Peek",weight:2},
-    {label:"Reroll",weight:3},
     {label:"Lose a Key",weight:2},
     {label:"Stone Key",weight:5},
     {label:"+1 Spin",weight:3},
@@ -900,7 +939,6 @@ function initPrizeWheel(){
       case 'Lose a Key': return 'You lost a random key.';
       case 'Reveal Hint': return 'One wrong lock revealed.';
       case 'Scroll Peek': return 'You peeked at the scroll lock!';
-      case 'Reroll': return 'Rerolling…';
       case '+1 Spin': return '+1 Spin! Spin again.';
       default: return label;
     }
@@ -926,11 +964,10 @@ function initPrizeWheel(){
 
     // notify + close logic
     const msg = prizeMessage(p.label);
-    const CLOSE_DELAY = 1100;              // time to view the prize
-    const AFTER_HIDE_DELAY = 550;          // start post-close actions *after* safe is gone
+    const CLOSE_DELAY = 1100;
+    const AFTER_HIDE_DELAY = 550;
 
     if (window._wheelAutoReroll) {
-      // automatically reroll after a short beat
       setTimeout(() => {
         window._wheelAutoReroll = false;
         safeDoor.classList.remove('open','show');
@@ -942,11 +979,9 @@ function initPrizeWheel(){
     }
 
     if (spinsLeft > 0) {
-      // got +1 Spin — keep wheel open and let them spin again
       showMessage(msg);
       updateButtons();
     } else {
-      // no extra spins — close after a short delay, then run any deferred task *after* the safe disappears
       setTimeout(() => {
         closeOverlay();
         showMessage(msg);
@@ -969,7 +1004,6 @@ function initPrizeWheel(){
     updateButtons();
   }
   function closeOverlay(){
-    // ensure interior isn't visible anymore, then hide overlay
     safeDoor.classList.remove('open','show');
     overlay.classList.add('hidden');
     overlay.setAttribute('aria-hidden','true');
@@ -980,7 +1014,7 @@ function initPrizeWheel(){
   function updateButtons(){
     if (safeDoor.classList.contains('open')) {
       if (spinsLeft > 0) {
-        spinBtn.textContent = 'Spin again';     // only after +1 Spin
+        spinBtn.textContent = 'Spin again';
         spinBtn.disabled = false;
         closeBtn.style.display = 'none';
       } else {
@@ -1007,8 +1041,8 @@ function initPrizeWheel(){
       return;
     }
 
-    if (spinsLeft <= 0) return; // safety
-    spinsLeft -= 1;             // consume a spin
+    if (spinsLeft <= 0) return;
+    spinsLeft -= 1;
     const i = pickWeightedIndex();
     spinToIndex(i);
     updateButtons();
@@ -1029,16 +1063,13 @@ function applyPrize(label){
     case 'Gold Key': spawnKey('gold'); break;
     case 'Stone Key': spawnKey('stone'); break;
     case 'Wooden Key': spawnKey('wood'); break;
-    case 'Reroll': window._wheelAutoReroll = true; break;       // auto-spin again
     case '+1 Spin': spinsLeft += 1; break;                      // only +1 Spin grants another spin
     case 'Reveal Hint': openRandomWrong(1); break;
     case 'Scroll Peek': peekScroll(); break;
-    case 'Combine 2 Keys': combineTwoKeys(); break;
     case 'Lose a Key':
-      // defer the fancy animation until after overlay closes/disappears
-case 'Lose a Key':
-  window._wheelPostCloseTask = () => { setTimeout(loseRandomKey, 2000); };
-  break;
+      // defer inventory animation until after the safe overlay closes
+      window._wheelPostCloseTask = () => { loseRandomKey(); };
+      break;
     default: break;
   }
 }
@@ -1056,7 +1087,6 @@ function loseRandomKey(){
     k.classList.add('inv-lit');
   });
 
-  // helper to clear highlights after we're done
   const clearHighlights = () => {
     Array.from(keyGrid.querySelectorAll('.key')).forEach(k => {
       k.classList.remove('inv-dim','inv-doomed','inv-lit');
@@ -1122,3 +1152,4 @@ function peekScroll(){
     setTimeout(()=> target.classList.remove('peek'), 1600);
   }
 }
+
