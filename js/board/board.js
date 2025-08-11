@@ -10,7 +10,7 @@ export async function loadBoards() {
     state.boards = window.BOARDS;
     return;
   }
-  const res = await fetch('boards.json');
+  const res = await fetch(new URL('./boards.json', import.meta.url));
   state.boards = await res.json();
 }
 
