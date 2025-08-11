@@ -4,12 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Locks & Letters</title>
-
-  <!-- If you have a single CSS file, link it here. Otherwise keep your existing links. -->
-  <!-- <link rel="stylesheet" href="styles.css"> -->
 </head>
 <body>
-  <!-- Topbar -->
   <div class="topbar">
     <div class="topbar-inner">
       <h1 class="title">LOCKS & LETTERS</h1>
@@ -19,22 +15,18 @@
     </div>
   </div>
 
-  <!-- App layout -->
   <div id="app">
     <div class="play-area">
-      <!-- Locks row -->
       <div class="locks-strip">
         <div class="locks" id="locks"></div>
       </div>
 
-      <!-- Board -->
       <div class="board-wrap">
         <div class="parchment">
           <div id="letter-grid" class="grid" aria-label="Letter Grid"></div>
         </div>
       </div>
 
-      <!-- Inventory dock (centered under the board) -->
       <div class="inventory-dock" style="display:flex; justify-content:center; align-items:center; gap:18px; margin:16px 0 28px;">
         <div class="inventory" id="inventory" aria-label="Inventory">
           <div class="key-grid" id="keys">
@@ -46,16 +38,13 @@
           </div>
         </div>
 
-        <!-- Vault safe drop target (same footprint as inventory slots) -->
         <div id="vault-safe" aria-label="Vault Safe">
           <img alt="Safe" src="sprites/vault.png" />
         </div>
       </div>
     </div>
 
-    <!-- Sidebar -->
     <aside class="sidebar">
-      <!-- Progress -->
       <div class="card progress-card">
         <div>
           <div class="theme-label">Theme</div>
@@ -72,7 +61,6 @@
         </div>
       </div>
 
-      <!-- Smithing / Forge -->
       <div class="card smith-card" id="smith">
         <div class="smith-top">
           <div class="drop-slot" data-slot="a">
@@ -86,14 +74,12 @@
         <button id="forge-btn" class="btn forge-btn" disabled>Forge</button>
       </div>
 
-      <!-- Trash -->
       <div class="card trash-bin" id="trash" aria-label="Trash">
         <div class="trash-icon">🗑️</div>
       </div>
     </aside>
   </div>
 
-  <!-- Popup -->
   <div id="popup" class="popup hidden" aria-hidden="true">
     <div class="popup-card">
       <div id="popup-text">Message</div>
@@ -101,12 +87,10 @@
     </div>
   </div>
 
-  <!-- Prize Wheel Overlay -->
   <div id="wheel-overlay" class="wheel-overlay hidden" aria-hidden="true">
     <div class="wheel-stage">
       <canvas id="wheel-canvas" width="600" height="600"></canvas>
 
-      <!-- Safe door / prize reveal -->
       <div id="safeDoor" class="safeDoor">
         <div class="interior">
           <div class="prize">
@@ -130,7 +114,6 @@
   </div>
 
   <script src="data/boards.js"></script>
-
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
