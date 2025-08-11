@@ -1037,8 +1037,9 @@ function applyPrize(label){
     case 'Combine 2 Keys': combineTwoKeys(); break;
     case 'Lose a Key':
       // defer the fancy animation until after overlay closes/disappears
-      window._wheelPostCloseTask = () => { loseRandomKey(); };
-      break;
+case 'Lose a Key':
+  window._wheelPostCloseTask = () => { setTimeout(loseRandomKey, 2000); };
+  break;
     default: break;
   }
 }
