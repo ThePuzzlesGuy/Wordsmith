@@ -6,6 +6,7 @@ let currentPath = [];
 let selectedLetters = [];
 let completedBoards = [];
 let currentBoard = null;
+let gridCols = 0; // track column count for adjacency checks
 
 // Progress
 let lives = 3;
@@ -100,6 +101,7 @@ function setupBoard(restartSame=false) {
   const gridEl = document.getElementById("letter-grid");
   gridEl.innerHTML = "";
   const cols = currentBoard.cols || Math.sqrt(currentBoard.grid.length) || 5;
+  gridCols = cols; // save for adjacency logic
   gridEl.style.gridTemplateColumns = `repeat(${cols}, 74px)`;
 
   for (let i = 0; i < currentBoard.grid.length; i++) {
@@ -321,10 +323,24 @@ function continueSelect(e) {
     !currentPath.includes(e.target) &&
     e.target.dataset.active === "true"
   ) {
+    // Only allow adjacent selection (8-directional)
+    const last = currentPath[currentPath.length - 1];
+    const lastIdx = Number(last.dataset.index);
+    const nextIdx = Number(e.target.dataset.index);
+    if (!areAdjacent(lastIdx, nextIdx)) return;
+
     currentPath.push(e.target);
     e.target.style.background = "#e8d8b7";
     selectedLetters.push(e.target.textContent);
   }
+}
+
+// helper: adjacency in 8 directions
+function areAdjacent(i, j){
+  if (i === j) return false;
+  const r1 = Math.floor(i / gridCols), c1 = i % gridCols;
+  const r2 = Math.floor(j / gridCols), c2 = j % gridCols;
+  return Math.abs(r1 - r2) <= 1 && Math.abs(c1 - c2) <= 1;
 }
 
 function endSelect() {
@@ -659,7 +675,7 @@ function doCombine(){
   maybeCheckLose();
 }
 
-/* ========== DURABILITY & GAMBLE ========== */
+/* ========== DURABILITY & GAMBLE (now visible popup with animated cursor) ========== */
 function runDurabilityCheck(keyType){
   return new Promise(resolve => {
     if (keyType === 'pick') { resolve(true); return; }
@@ -668,9 +684,78 @@ function runDurabilityCheck(keyType){
   });
 }
 function runGamble(successChance){ return new Promise(resolve => { showGambleBar(successChance, resolve); }); }
+
 function showGambleBar(successChance, resolve){
-  const succeed = Math.random() < successChance;
-  setTimeout(() => resolve(succeed), 220);
+  // Build overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'popup';
+  overlay.dataset.dismiss = 'locked';
+
+  const card = document.createElement('div');
+  card.className = 'dur-card';
+
+  const title = document.createElement('div');
+  title.className = 'dur-title';
+  title.textContent = `Testing your luck (${Math.round(successChance*100)}% chance)`;
+
+  const bar = document.createElement('div');
+  bar.className = 'dur-bar';
+
+  const red = document.createElement('div');
+  red.className = 'dur-red';
+  red.style.width = `${Math.max(0, Math.min(100, Math.round((1-successChance)*100)))}%`;
+
+  const green = document.createElement('div');
+  green.className = 'dur-green';
+
+  const cursor = document.createElement('div');
+  cursor.className = 'dur-cursor';
+  cursor.style.left = '0px';
+
+  const caption = document.createElement('div');
+  caption.className = 'dur-caption';
+  caption.textContent = '…';
+
+  bar.appendChild(red);
+  bar.appendChild(green);
+  bar.appendChild(cursor);
+
+  card.appendChild(title);
+  card.appendChild(bar);
+  card.appendChild(caption);
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+
+  // Animate cursor ping-pong then stop at a random time (uniform), making success probability = green width
+  const width = 320; // matches CSS .dur-bar width
+  let start = performance.now();
+  const minStop = 1100, maxStop = 2000;
+  const stopAt = start + (minStop + Math.random()*(maxStop-minStop));
+  const freq = 8.5; // oscillations per second (approx)
+  let raf = null;
+
+  function step(now){
+    const t = (now - start) / 1000; // seconds
+    // ping-pong between 0..width using a sine wave
+    const x = (Math.sin(t * Math.PI * freq) * 0.5 + 0.5) * width;
+    cursor.style.left = `${x}px`;
+
+    if (now < stopAt){
+      raf = requestAnimationFrame(step);
+    } else {
+      // final decision
+      const redWidth = width * (1 - successChance);
+      const success = x >= redWidth;
+      caption.textContent = success ? 'Success!' : 'Failed…';
+      cursor.style.transition = 'transform .2s';
+      cursor.style.transform = success ? 'scale(1.06)' : 'scale(0.94)';
+      setTimeout(() => {
+        overlay.remove();
+        resolve(success);
+      }, 500);
+    }
+  }
+  raf = requestAnimationFrame(step);
 }
 
 /* ========== PROGRESSION & FAIL STATE ========== */
@@ -924,8 +1009,8 @@ function initPrizeWheel(){
     const start=performance.now(), dur=3800;
     const ease=t=>1-Math.pow(1-t,3);
 
-    document.getElementById('spinBtn').disabled=true;
-    document.getElementById('safeDoor').classList.remove("open","show");
+    spinBtn.disabled=true;
+    safeDoor.classList.remove("open","show");
     canvas.classList.remove('hidden');
 
     (function loop(now){
@@ -933,7 +1018,7 @@ function initPrizeWheel(){
       angle = current + (target-current) * ease(t);
       draw();
       if (t<1){ requestAnimationFrame(loop); }
-      else { angle=targetAngleBase; draw(); document.getElementById('spinBtn').disabled=false; revealPrize(PRIZES[index]); }
+      else { angle=targetAngleBase; draw(); spinBtn.disabled=false; revealPrize(PRIZES[index]); }
     })(performance.now());
   }
 
