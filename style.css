@@ -131,8 +131,8 @@ body{
 .key.inv-doomed{ animation: keyPop .26s ease-in forwards; }
 @keyframes keyPop{ 0%{ transform:scale(1); opacity:1 } 100%{ transform:scale(.6); opacity:0 } }
 
-/* Popup base */
-.popup{ position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.35); }
+/* Popup base — raise above wheel */
+.popup{ position:fixed; inset:0; z-index:10050; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.35); }
 .popup.hidden{ display:none; }
 .popup-card{ min-width:300px; max-width:80vw; background:#fff8e8; border:2px solid #e3cfa6; border-radius:16px; box-shadow:0 12px 30px rgba(0,0,0,.25); padding:16px 18px; text-align:center; }
 #popup-text{ font-weight:800; color:#5a3d1e; white-space:pre-line; }
