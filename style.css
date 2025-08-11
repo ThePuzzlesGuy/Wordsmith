@@ -134,11 +134,10 @@ body{
   margin:16px 0 28px;
   padding:0;
 
-  /* center the inventory block under the board */
   display:flex;
   justify-content:center;
   align-items:center;
-  position:relative; /* so the safe can sit as a sibling */
+  position:relative;
   gap:14px;
 }
 
@@ -148,8 +147,6 @@ body{
   border-radius:16px;
   box-shadow: var(--shadow);
   padding:12px 14px;
-
-  /* ensure the inventory box itself is sized to its content and centered */
   display:flex;
   align-items:center;
 }
@@ -160,24 +157,20 @@ body{
 .key:active{ transform:scale(.96) } .key.carried{ outline:2px dashed rgba(0,0,0,.15); outline-offset:2px; }
 .inventory.full { animation:invShake .3s }
 
-/* --- Vault SAFE drop target (same footprint as inventory slots) --- */
+/* --- Vault SAFE drop target --- */
 #vault-safe{
   width:56px;
   height:56px;
   flex:0 0 56px;
-
   display:flex;
   align-items:center;
   justify-content:center;
-
   border-radius:10px;
   background:#fff7e2;
   border:2px solid #d6ba84;
   box-shadow: inset 0 2px 8px rgba(0,0,0,.06);
-
-  /* alignment: sits to the RIGHT of the centered inventory */
-  margin-left:14px;     /* spacing from inventory */
-  align-self:center;    /* vertical centering in the row */
+  margin-left:14px;
+  align-self:center;
 }
 #vault-safe.hover{
   background:#fff3d2;
@@ -189,13 +182,15 @@ body{
   object-fit:contain; display:block; pointer-events:none;
 }
 
-/* --- Vault KEY in inventory (badge small in the key’s corner) --- */
-.key.vault-key{ position:relative; }
-.key.vault-key .key-inner{
-  width:100%; height:100%; display:block; object-fit:contain; border-radius:10px;
+/* --- NEW: Dedicated vault key slot (only accepts key_vault) --- */
+.vault-slot{
+  border-color:#9dc7ff;
+  background:#f2f7ff;
 }
-.key.vault-key .badge-vault{
-  position:absolute; right:2px; top:2px; width:14px; height:14px; pointer-events:none; z-index:2;
+.vault-slot.hover{
+  background:#e6f0ff;
+  outline:3px dashed rgba(80,120,200,.45);
+  outline-offset:2px;
 }
 
 /* Lose-a-key animation helpers */
