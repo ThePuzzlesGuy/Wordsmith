@@ -779,7 +779,8 @@ function placeVaultIcon(){
 }
 
 // ----- Prize Wheel implementation -----
-let spinsLeft = 0; // exact number of spins available while overlay is open
+let spinsLeft = 0;              // exact spins available while overlay is open
+window._wheelAutoReroll = false; // global flag used across scopes
 
 function initPrizeWheel(){
   const overlay = document.getElementById('wheel-overlay');
@@ -890,6 +891,21 @@ function initPrizeWheel(){
     })(performance.now());
   }
 
+  function prizeMessage(label){
+    switch(label){
+      case 'Gold Key': return 'You won a Gold Key!';
+      case 'Stone Key': return 'You won a Stone Key!';
+      case 'Wooden Key': return 'You won a Wooden Key!';
+      case 'Combine 2 Keys': return 'Two keys combined!';
+      case 'Lose a Key': return 'You lost a random key.';
+      case 'Reveal Hint': return 'One wrong lock revealed.';
+      case 'Scroll Peek': return 'You peeked at the scroll lock!';
+      case 'Reroll': return 'Rerolling…';
+      case '+1 Spin': return '+1 Spin! Spin again.';
+      default: return label;
+    }
+  }
+
   function revealPrize(p){
     // swap prize image with fallback-aware sprite
     const newImg = createSpriteImg(SPRITES[p.label], p.label);
@@ -902,9 +918,39 @@ function initPrizeWheel(){
     safeDoor.classList.add("show");
     requestAnimationFrame(()=>safeDoor.classList.add("open"));
 
-    // apply the prize immediately
+    // award prize
     applyPrize(p.label);
+
+    // update button states
     updateButtons();
+
+    // notify + close logic
+    const msg = prizeMessage(p.label);
+    const CLOSE_DELAY = 1100;
+
+    if (window._wheelAutoReroll) {
+      // automatically reroll after a short beat
+      setTimeout(() => {
+        window._wheelAutoReroll = false;
+        safeDoor.classList.remove('open','show');
+        canvas.classList.remove('hidden');
+        const i = pickWeightedIndex();
+        spinToIndex(i);
+      }, 950);
+      return;
+    }
+
+    if (spinsLeft > 0) {
+      // got +1 Spin — keep wheel open and let them spin again
+      showMessage(msg);
+      updateButtons();
+    } else {
+      // no extra spins — close after a short delay
+      setTimeout(() => {
+        closeOverlay();
+        showMessage(msg);
+      }, CLOSE_DELAY);
+    }
   }
 
   function openOverlay(){
@@ -919,12 +965,14 @@ function initPrizeWheel(){
   function closeOverlay(){
     overlay.classList.add('hidden');
     overlay.setAttribute('aria-hidden','true');
+    spinsLeft = 0;
+    window._wheelAutoReroll = false;
   }
 
   function updateButtons(){
     if (safeDoor.classList.contains('open')) {
-      // Door open: either allow another spin or let them close
       if (spinsLeft > 0) {
+        // only true when prize was +1 Spin
         spinBtn.textContent = 'Spin again';
         spinBtn.disabled = false;
         closeBtn.style.display = 'none';
@@ -934,7 +982,6 @@ function initPrizeWheel(){
         closeBtn.style.display = 'inline-flex';
       }
     } else {
-      // Door closed: ready to spin if we have spins
       spinBtn.textContent = 'Spin';
       spinBtn.disabled = spinsLeft <= 0;
       closeBtn.style.display = 'none';
@@ -944,7 +991,6 @@ function initPrizeWheel(){
   spinBtn.addEventListener('click', ()=>{
     if (spinning) return;
 
-    // If door is open and we have spins left, close door and prep for next spin
     if (safeDoor.classList.contains('open')) {
       if (spinsLeft > 0) {
         safeDoor.classList.remove('open','show');
@@ -954,8 +1000,8 @@ function initPrizeWheel(){
       return;
     }
 
-    if (spinsLeft <= 0) return; // safety
-    spinsLeft -= 1;             // consume a spin
+    if (spinsLeft <= 0) return;
+    spinsLeft -= 1;             // consume a spin (they start with 1)
     const i = pickWeightedIndex();
     spinToIndex(i);
     updateButtons();
@@ -963,6 +1009,7 @@ function initPrizeWheel(){
 
   closeBtn.addEventListener('click', closeOverlay);
 
+  // open function used by game
   window.openPrizeWheel = function(){ openOverlay(); };
 
   draw();
@@ -976,8 +1023,8 @@ function applyPrize(label){
     case 'Gold Key': spawnKey('gold'); break;
     case 'Stone Key': spawnKey('stone'); break;
     case 'Wooden Key': spawnKey('wood'); break;
-    case 'Reroll': spinsLeft += 1; break;
-    case '+1 Spin': spinsLeft += 1; break;
+    case 'Reroll': window._wheelAutoReroll = true; break; // auto-spin again
+    case '+1 Spin': spinsLeft += 1; break;                // only +1 Spin grants another spin
     case 'Reveal Hint': openRandomWrong(1); break;
     case 'Scroll Peek': peekScroll(); break;
     case 'Combine 2 Keys': combineTwoKeys(); break;
