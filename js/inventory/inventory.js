@@ -1,9 +1,8 @@
-import { createSpriteImg } from './utils.js';
-import { showMessage } from './ui.js';
-import { openPrizeWheel } from './wheel.js';
-import { maybeCheckLose } from './progression.js';
+import { createSpriteImg } from '../utils.js';
+import { showMessage } from '../ui/ui.js';
+import { openPrizeWheel } from '../wheel/wheel.js';
+import { maybeCheckLose } from '../progression/progression.js';
 
-/* ===== Inventory & Keys ===== */
 export function spawnKey(type){
   const inv = document.getElementById("inventory");
   const keyGrid = document.getElementById("keys");
@@ -47,7 +46,6 @@ export function spawnKey(type){
   emptySlot.appendChild(img);
 }
 
-/* Special Vault Key (gold base + vault badge) */
 export function spawnVaultKey(){
   const inv = document.getElementById("inventory");
   const keyGrid = document.getElementById("keys");
@@ -133,7 +131,7 @@ export function setupDragAndDrop() {
       const dragging = document.querySelector(".dragging");
       if (!dragging) return;
       const t = dragging.dataset.type;
-      if (t === 'vault') return;         // do not accept the vault key in the forge
+      if (t === 'vault') return;
       if (slot.querySelector('.key')) return;
 
       slot.appendChild(dragging);
@@ -164,7 +162,6 @@ export function setupDragAndDrop() {
     maybeCheckLose();
   });
 
-  // Vault Safe
   vaultSafe.addEventListener('dragenter', () => vaultSafe.classList.add('hover'));
   vaultSafe.addEventListener('dragleave', () => vaultSafe.classList.remove('hover'));
   vaultSafe.addEventListener('drop', e => {
@@ -174,12 +171,11 @@ export function setupDragAndDrop() {
     if (!dragging) return;
     if (dragging.dataset.type !== 'vault') return;
 
-    dragging.remove();     // consume the vault key
-    openPrizeWheel();      // open the wheel
+    dragging.remove();
+    openPrizeWheel();
   });
 }
 
-/* local helper */
 function getCombinerSlots(){
   const root = document.getElementById('smith');
   return { a: root.querySelector('.drop-slot[data-slot="a"]'), b: root.querySelector('.drop-slot[data-slot="b"]') };
