@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { shuffle, createSpriteImg } from '../utils.js';
+import { createSpriteImg } from '../utils.js';
 import { buildDynamicLocks } from '../locks/locks.js';
 import { showMessage } from '../ui/ui.js';
 import { maybeCheckLose } from '../progression/progression.js';
@@ -35,14 +35,26 @@ export function setupBoard(restartSame = false) {
     state.completedBoards.push(actualIndex);
   }
 
-  document.getElementById('theme').textContent = state.currentBoard.theme;
+  const themeEl = document.getElementById('theme');
+  if (themeEl) themeEl.textContent = state.currentBoard.theme;
 
   state.remainingWords = state.currentBoard.words.map((w) => w.toUpperCase());
   state.validWords = state.remainingWords.slice();
 
-  const gridEl = document.getElementById('letter-grid');
+  let gridEl = document.getElementById('letter-grid');
+  if (!gridEl) {
+    const host = document.querySelector('.parchment') || document.body;
+    gridEl = document.createElement('div');
+    gridEl.id = 'letter-grid';
+    gridEl.className = 'grid';
+    host.appendChild(gridEl);
+  }
+
   gridEl.innerHTML = '';
   const cols = state.currentBoard.cols || Math.sqrt(state.currentBoard.grid.length) || 5;
+  gridEl.style.display = 'inline-grid';
+  gridEl.style.gap = '10px';
+  gridEl.style.justifyContent = 'center';
   gridEl.style.gridTemplateColumns = `repeat(${cols}, 74px)`;
 
   for (let i = 0; i < state.currentBoard.grid.length; i++) {
