@@ -1,9 +1,8 @@
-import { state } from './state.js';
-import { shuffle, createSpriteImg } from './utils.js';
-import { showMessage, updateProgressUI, confirmChoice } from './ui.js';
-import { maybeCheckLose } from './progression.js';
+import { state } from '../state.js';
+import { shuffle, createSpriteImg } from '../utils.js';
+import { showMessage, updateProgressUI, confirmChoice } from '../ui/ui.js';
+import { maybeCheckLose } from '../progression/progression.js';
 
-/* ===== Build locks row ===== */
 export function buildDynamicLocks(words) {
   const wrap = document.getElementById('locks');
   wrap.innerHTML = "";
@@ -62,7 +61,6 @@ export function sizeLocksRow() {
   document.documentElement.style.setProperty('--lock-size', `${size}px`);
 }
 
-/* ===== Interactions ===== */
 export async function onLockDrop(e, lock) {
   e.preventDefault();
   const draggingKey = document.querySelector(".dragging");
@@ -99,7 +97,6 @@ export async function onLockDrop(e, lock) {
   }
 }
 
-/* Lock pick flow */
 export async function handleLockPickDrop(lock, keyEl){
   const wantMulti = await confirmChoice(
     "Use the lock pick on multiple locks?",
@@ -109,7 +106,7 @@ export async function handleLockPickDrop(lock, keyEl){
 
   if (!wantMulti) {
     keyEl.remove();
-    openLockSimple(lock, /*announce*/true);
+    openLockSimple(lock, true);
     return;
   }
 
@@ -128,7 +125,7 @@ export async function handleLockPickDrop(lock, keyEl){
 
   if (!tryThree) {
     keyEl.remove();
-    openLockSimple(lock, /*announce*/true);
+    openLockSimple(lock, true);
     openRandomWrong(1, [Number(lock.dataset.id)]);
     return;
   }
@@ -141,7 +138,7 @@ export async function handleLockPickDrop(lock, keyEl){
   }
 
   keyEl.remove();
-  openLockSimple(lock, /*announce*/true);
+  openLockSimple(lock, true);
   openRandomWrong(2, [Number(lock.dataset.id)]);
 }
 
@@ -182,12 +179,10 @@ export function revealScroll(lock){
   lock.appendChild(scroll);
 
   setTimeout(() => {
-    // decoupled: tell main to reset the game/board
     document.dispatchEvent(new CustomEvent('game:reset'));
   }, 1500);
 }
 
-/* ===== Chance UI (lightweight) ===== */
 function runDurabilityCheck(keyType){
   return new Promise(resolve => {
     if (keyType === 'pick') { resolve(true); return; }
