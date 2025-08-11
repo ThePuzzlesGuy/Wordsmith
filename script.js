@@ -362,14 +362,14 @@ function markUsedTiles(tiles) {
     el.classList.add("used");
   });
 
-  // If this path used the vault tile, award a Vault Key instead of opening the wheel immediately
+  // If this path used the vault tile, also award a Vault Key (in addition to the normal key)
   if (vaultIndex !== -1 && tiles.some(el => Number(el.dataset.index) === Number(vaultIndex))) {
     const grid = document.getElementById('letter-grid');
     const badge = grid && grid.querySelector('.vault-badge');
     if (badge) badge.remove();
     vaultIndex = -1;
 
-    spawnVaultKey();                 // put a vault key in inventory
+    spawnVaultKey();                 // dedicated key for the vault slot
     showMessage("Vault Key acquired! Drag it to the safe.");
   }
 }
@@ -436,40 +436,23 @@ function spawnKey(type){
   emptySlot.appendChild(img);
 }
 
-/* NEW: spawn a special Vault Key (gold key with vault badge) */
+/* NEW: spawn a special Vault Key (its own sprite + type, no badge) */
 function spawnVaultKey(){
-  const inv = document.getElementById("inventory");
-  const keyGrid = document.getElementById("keys");
+  const keyArea = document.getElementById("keys");
+  const vaultSlot = document.getElementById("vault-slot");
 
-  const emptySlot = Array.from(keyGrid.querySelectorAll('.inv-slot')).find(s => !s.querySelector('.key'));
-  if (!emptySlot) {
-    inv.classList.add('full');
-    setTimeout(() => inv.classList.remove('full'), 320);
-    return;
-  }
-
-  const wrap = document.createElement('div');
-  wrap.className = 'key vault-key';
-  wrap.dataset.type = 'vault';
-  wrap.draggable = true;
-
-  const base = createSpriteImg('key_gold.png', 'Vault Key');
-  base.className = 'key-inner';
-  base.draggable = false;
-
-  const badge = createSpriteImg('vault.png', 'Vault');
-  badge.className = 'badge-vault';
-  badge.draggable = false;
-
-  wrap.appendChild(base);
-  wrap.appendChild(badge);
+  // Make the vault key element
+  const img = createSpriteImg('key_vault.png', 'Vault Key');
+  img.className = "key";
+  img.dataset.type = 'vault';
+  img.draggable = true;
 
   let dragGhost = null;
-  wrap.addEventListener('dragstart', (e) => {
+  img.addEventListener('dragstart', (e) => {
     e.dataTransfer.setData('text/plain', 'vault');
     e.dataTransfer.effectAllowed = 'move';
 
-    dragGhost = wrap.cloneNode(true);
+    dragGhost = img.cloneNode(true);
     dragGhost.style.width = "36px";
     dragGhost.style.height = "36px";
     dragGhost.style.maxWidth = "36px";
@@ -481,14 +464,21 @@ function spawnVaultKey(){
     document.body.appendChild(dragGhost);
     try { e.dataTransfer.setDragImage(dragGhost, 18, 18); } catch (_) {}
 
-    wrap.classList.add('dragging');
+    img.classList.add('dragging');
   });
-  wrap.addEventListener('dragend', () => {
-    wrap.classList.remove('dragging');
+  img.addEventListener('dragend', () => {
+    img.classList.remove('dragging');
     if (dragGhost) { dragGhost.remove(); dragGhost = null; }
   });
 
-  emptySlot.appendChild(wrap);
+  // Prefer the dedicated vault slot; fallback to a regular empty slot if needed
+  if (vaultSlot && !vaultSlot.querySelector('.key')) {
+    vaultSlot.appendChild(img);
+  } else {
+    const empty = Array.from(keyArea.querySelectorAll('.inv-slot')).find(s => !s.querySelector('.key'));
+    if (empty) empty.appendChild(img);
+    else showMessage("No space for the Vault Key!");
+  }
 }
 
 function resetGame() {
@@ -507,8 +497,9 @@ function setupDragAndDrop() {
   const smith = document.getElementById('smith');
   const forgeBtn = document.getElementById('forge-btn');
   const vaultSafe = document.getElementById('vault-safe');
+  const vaultSlot = document.getElementById('vault-slot');
 
-  [slotA, slotB, trash, keyArea, smith, vaultSafe].forEach(area => {
+  [slotA, slotB, trash, keyArea, smith, vaultSafe, vaultSlot].forEach(area => {
     area.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
   });
 
@@ -553,7 +544,7 @@ function setupDragAndDrop() {
     maybeCheckLose();
   });
 
-  // NEW: Vault Safe drop target
+  // Vault Safe drop target (consumes ONLY the vault key)
   vaultSafe.addEventListener('dragenter', () => vaultSafe.classList.add('hover'));
   vaultSafe.addEventListener('dragleave', () => vaultSafe.classList.remove('hover'));
   vaultSafe.addEventListener('drop', e => {
@@ -565,6 +556,20 @@ function setupDragAndDrop() {
 
     dragging.remove();     // consume the vault key
     openPrizeWheel();      // open the wheel
+  });
+
+  // NEW: Dedicated vault slot only accepts the vault key
+  vaultSlot.addEventListener('dragenter', () => vaultSlot.classList.add('hover'));
+  vaultSlot.addEventListener('dragleave', () => vaultSlot.classList.remove('hover'));
+  vaultSlot.addEventListener('drop', e => {
+    e.preventDefault();
+    vaultSlot.classList.remove('hover');
+    const dragging = document.querySelector('.dragging');
+    if (!dragging) return;
+    if (dragging.dataset.type !== 'vault') return; // reject normal keys
+    if (vaultSlot.querySelector('.key')) return;    // only one vault key
+
+    vaultSlot.appendChild(dragging);
   });
 
   forgeBtn.addEventListener('click', async () => {
@@ -655,7 +660,6 @@ function doCombine(){
 }
 
 /* ========== DURABILITY & GAMBLE ========== */
-// UI removed — keep timing lightweight and resolve the chance
 function runDurabilityCheck(keyType){
   return new Promise(resolve => {
     if (keyType === 'pick') { resolve(true); return; }
@@ -666,7 +670,7 @@ function runDurabilityCheck(keyType){
 function runGamble(successChance){ return new Promise(resolve => { showGambleBar(successChance, resolve); }); }
 function showGambleBar(successChance, resolve){
   const succeed = Math.random() < successChance;
-  setTimeout(() => resolve(succeed), 220); // tiny delay to feel responsive
+  setTimeout(() => resolve(succeed), 220);
 }
 
 /* ========== PROGRESSION & FAIL STATE ========== */
@@ -694,6 +698,9 @@ function maybeCheckLose(){
         <div class="inv-slot"></div>
         <div class="inv-slot"></div>
         <div class="inv-slot"></div>`;
+      // clear vault slot too
+      const vs = document.getElementById('vault-slot');
+      if (vs) vs.innerHTML = "";
       lives = 3; scrolls = 0; updateProgressUI(); setupBoard(false); setupDragAndDrop(); resolvingLoss = false;
     }, 1200);
   } else {
@@ -723,11 +730,13 @@ function isAnyRemainingWordPossible(){
 }
 
 function canOpenHiddenLock(){
-  const keys = document.querySelectorAll('#keys .key, #smith .key');
-  const counts = { wood:0, stone:0, gold:0, pick:0 };
+  const keys = document.querySelectorAll('#keys .key, #smith .key, #vault-slot .key');
+  const counts = { wood:0, stone:0, gold:0, pick:0, vault:0 };
   keys.forEach(k => { const t = k.dataset.type; if (counts[t] !== undefined) counts[t]++; });
 
   if (counts.pick > 0) return true;
+  // vault key doesn't open locks directly; it opens the wheel
+  if (counts.vault > 0) return true;
 
   const typeNeeded = getHiddenLockType();
   if (!typeNeeded) return false;
@@ -869,14 +878,9 @@ function initPrizeWheel(){
     const tipR=R*0.82, baseR=R*0.92, w=R*0.06, ax=POINTER_ANGLE;
     const nx=Math.cos(ax), ny=Math.sin(ax), tx=-ny, ty=nx;
     const tip={x:C.x+nx*tipR,y:C.y+ny*tipR};
-    const bl={x:C.x+nx*baseR+tx*w,y:C.y+ny*baseR+ty*w};
-    const br={x:C.x+nx*baseR-tx*w,y:C.y+ny*baseR-ty*w};
-    ctx.fillStyle="#bfc6d0";
-    ctx.beginPath(); ctx.moveTo(tip.x,tip.y); ctx.lineTo(bl.x,bl.y); ctx.lineTo(br.x,br.y); ctx.closePath();
-    ctx.shadowColor="rgba(0,0,0,.4)"; ctx.shadowBlur=6; ctx.fill(); ctx.shadowBlur=0;
-    ctx.fillStyle="#7e8794"; const capR=w*0.9, capC={x:C.x+nx*(baseR+capR*0.2),y:C.y+ny*(baseR+capR*0.2)};
-    ctx.beginPath(); ctx.arc(capC.x,capC.y,capR,0,Math.PI*2); ctx.fill();
+    const bl={x:C.x+nx*baseR+tx*w,y+C.y+ny*baseR+ty*w};
   }
+  // (Pointer drawing code is defined later inside draw())
 
   function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -900,7 +904,17 @@ function initPrizeWheel(){
     ctx.fillStyle=hub; ctx.beginPath(); ctx.arc(C.x,C.y,R*0.36,0,Math.PI*2); ctx.fill();
     ctx.fillStyle="#31394d"; ctx.beginPath(); ctx.arc(C.x,C.y,R*0.035,0,Math.PI*2); ctx.fill();
 
-    drawPointer();
+    // pointer
+    const tipR=R*0.82, baseR=R*0.92, w=R*0.06, ax=POINTER_ANGLE;
+    const nx=Math.cos(ax), ny=Math.sin(ax), tx=-ny, ty=nx;
+    const tip={x:C.x+nx*tipR,y:C.y+ny*tipR};
+    const bl={x:C.x+nx*baseR+tx*w,y:C.y+ny*baseR+ty*w};
+    const br={x:C.x+nx*baseR-tx*w,y:C.y+ny*baseR-ty*w};
+    ctx.fillStyle="#bfc6d0";
+    ctx.beginPath(); ctx.moveTo(tip.x,tip.y); ctx.lineTo(bl.x,bl.y); ctx.lineTo(br.x,br.y); ctx.closePath();
+    ctx.shadowColor="rgba(0,0,0,.4)"; ctx.shadowBlur=6; ctx.fill(); ctx.shadowBlur=0;
+    ctx.fillStyle="#7e8794"; const capR=w*0.9, capC={x:C.x+nx*(baseR+capR*0.2),y:C.y+ny*(baseR+capR*0.2)};
+    ctx.beginPath(); ctx.arc(capC.x,capC.y,capR,0,Math.PI*2); ctx.fill();
   }
 
   const totalWeight = PRIZES.reduce((s,p)=>s+p.weight,0);
@@ -917,17 +931,19 @@ function initPrizeWheel(){
 
     const start=performance.now(), dur=3800;
     const ease=t=>1-Math.pow(1-t,3);
-    spinning=true;
-    spinBtn.disabled=true;
-    safeDoor.classList.remove("open","show");
-    canvas.classList.remove('hidden');
+    let spinning=true;
+    const canvasLocal=canvas; // avoid closure confusion
+
+    document.getElementById('spinBtn').disabled=true;
+    document.getElementById('safeDoor').classList.remove("open","show");
+    canvasLocal.classList.remove('hidden');
 
     (function loop(now){
       const t = Math.max(0, Math.min(1, (now-start)/dur));
       angle = current + (target-current) * ease(t);
       draw();
       if (t<1){ requestAnimationFrame(loop); }
-      else { angle=targetAngleBase; draw(); spinning=false; spinBtn.disabled=false; revealPrize(PRIZES[index]); }
+      else { angle=targetAngleBase; draw(); document.getElementById('spinBtn').disabled=false; spinning=false; revealPrize(PRIZES[index]); }
     })(performance.now());
   }
 
@@ -945,24 +961,21 @@ function initPrizeWheel(){
   }
 
   function revealPrize(p){
-    // swap prize image with fallback-aware sprite
     const newImg = createSpriteImg(SPRITES[p.label], p.label);
     newImg.id = 'prizeImg';
     const prev = document.getElementById('prizeImg');
     if (prev) prev.replaceWith(newImg);
 
-    // hide the wheel while the door is open
-    canvas.classList.add("hidden");
-    safeDoor.classList.add("show");
-    requestAnimationFrame(()=>safeDoor.classList.add("open"));
+    const canvasLocal = document.getElementById('wheel-canvas');
+    const safeDoorLocal = document.getElementById('safeDoor');
 
-    // award prize (some prizes may defer actions)
+    canvasLocal.classList.add("hidden");
+    safeDoorLocal.classList.add("show");
+    requestAnimationFrame(()=>safeDoorLocal.classList.add("open"));
+
     applyPrize(p.label);
-
-    // update button states
     updateButtons();
 
-    // notify + close logic
     const msg = prizeMessage(p.label);
     const CLOSE_DELAY = 1100;
     const AFTER_HIDE_DELAY = 550;
@@ -970,8 +983,8 @@ function initPrizeWheel(){
     if (window._wheelAutoReroll) {
       setTimeout(() => {
         window._wheelAutoReroll = false;
-        safeDoor.classList.remove('open','show');
-        canvas.classList.remove('hidden');
+        safeDoorLocal.classList.remove('open','show');
+        canvasLocal.classList.remove('hidden');
         const i = pickWeightedIndex();
         spinToIndex(i);
       }, 950);
@@ -995,16 +1008,16 @@ function initPrizeWheel(){
   }
 
   function openOverlay(){
-    spinsLeft = 1;            // exactly one spin for a new vault trigger
+    spinsLeft = 1;
     overlay.classList.remove('hidden');
     overlay.setAttribute('aria-hidden','false');
-    canvas.classList.remove('hidden');
-    safeDoor.classList.remove('open','show');
+    document.getElementById('wheel-canvas').classList.remove('hidden');
+    document.getElementById('safeDoor').classList.remove('open','show');
     draw();
     updateButtons();
   }
   function closeOverlay(){
-    safeDoor.classList.remove('open','show');
+    document.getElementById('safeDoor').classList.remove('open','show');
     overlay.classList.add('hidden');
     overlay.setAttribute('aria-hidden','true');
     spinsLeft = 0;
@@ -1012,31 +1025,32 @@ function initPrizeWheel(){
   }
 
   function updateButtons(){
-    if (safeDoor.classList.contains('open')) {
+    const safeDoorLocal = document.getElementById('safeDoor');
+    const spinBtnLocal = document.getElementById('spinBtn');
+    const closeBtnLocal = document.getElementById('wheelCloseBtn');
+
+    if (safeDoorLocal.classList.contains('open')) {
       if (spinsLeft > 0) {
-        spinBtn.textContent = 'Spin again';
-        spinBtn.disabled = false;
-        closeBtn.style.display = 'none';
+        spinBtnLocal.textContent = 'Spin again';
+        spinBtnLocal.disabled = false;
+        closeBtnLocal.style.display = 'none';
       } else {
-        spinBtn.textContent = 'Spin';
-        spinBtn.disabled = true;
-        closeBtn.style.display = 'inline-flex';
+        spinBtnLocal.textContent = 'Spin';
+        spinBtnLocal.disabled = true;
+        closeBtnLocal.style.display = 'inline-flex';
       }
     } else {
-      spinBtn.textContent = 'Spin';
-      spinBtn.disabled = spinsLeft <= 0;
-      closeBtn.style.display = 'none';
+      spinBtnLocal.textContent = 'Spin';
+      spinBtnLocal.disabled = spinsLeft <= 0;
+      closeBtnLocal.style.display = 'none';
     }
   }
 
-  spinBtn.addEventListener('click', ()=>{
-    if (spinning) return;
-
-    if (safeDoor.classList.contains('open')) {
+  document.getElementById('spinBtn').addEventListener('click', ()=>{
+    if (document.getElementById('safeDoor').classList.contains('open')) {
       if (spinsLeft > 0) {
-        safeDoor.classList.remove('open','show');
-        canvas.classList.remove('hidden');
-        updateButtons();
+        document.getElementById('safeDoor').classList.remove('open','show');
+        document.getElementById('wheel-canvas').classList.remove('hidden');
       }
       return;
     }
@@ -1045,10 +1059,9 @@ function initPrizeWheel(){
     spinsLeft -= 1;
     const i = pickWeightedIndex();
     spinToIndex(i);
-    updateButtons();
   });
 
-  closeBtn.addEventListener('click', closeOverlay);
+  document.getElementById('wheelCloseBtn').addEventListener('click', closeOverlay);
 
   window.openPrizeWheel = function(){ openOverlay(); };
 
@@ -1063,11 +1076,10 @@ function applyPrize(label){
     case 'Gold Key': spawnKey('gold'); break;
     case 'Stone Key': spawnKey('stone'); break;
     case 'Wooden Key': spawnKey('wood'); break;
-    case '+1 Spin': spinsLeft += 1; break;                      // only +1 Spin grants another spin
+    case '+1 Spin': spinsLeft += 1; break;
     case 'Reveal Hint': openRandomWrong(1); break;
     case 'Scroll Peek': peekScroll(); break;
     case 'Lose a Key':
-      // defer inventory animation until after the safe overlay closes
       window._wheelPostCloseTask = () => { loseRandomKey(); };
       break;
     default: break;
@@ -1081,7 +1093,6 @@ function loseRandomKey(){
   const keys = Array.from(keyGrid.querySelectorAll('.key'));
   if (keys.length === 0) return;
 
-  // Reset and light everyone up
   keys.forEach(k => {
     k.classList.remove('inv-dim','inv-doomed','inv-lit');
     k.classList.add('inv-lit');
@@ -1106,11 +1117,11 @@ function loseRandomKey(){
     return;
   }
 
-  const order = shuffle(keys.slice());     // random elimination order
-  const doomed = order[order.length - 1];  // last remaining will be deleted
+  const order = shuffle(keys.slice());
+  const doomed = order[order.length - 1];
   let i = 0;
 
-  const stepTime = 380; // slower dim pace
+  const stepTime = 380;
   function step(){
     if (i < order.length - 1) {
       const k = order[i++];
@@ -1118,13 +1129,12 @@ function loseRandomKey(){
       k.classList.add('inv-dim');
       setTimeout(step, stepTime);
     } else {
-      // pause on the final highlighted key, then pop it
       setTimeout(() => {
         doomed.classList.add('inv-doomed');
         doomed.classList.remove('inv-lit');
         setTimeout(() => {
           doomed.remove();
-          setTimeout(clearHighlights, 80); // restore remaining to normal
+          setTimeout(clearHighlights, 80);
         }, 320);
       }, 360);
     }
@@ -1139,7 +1149,6 @@ function combineTwoKeys(){
 
   if (byType.wood.length >= 2){ byType.wood[0].remove(); byType.wood[1].remove(); spawnKey('stone'); return; }
   if (byType.stone.length >= 2){ byType.stone[0].remove(); byType.stone[1].remove(); spawnKey('gold'); return; }
-  // fallback if no pair: give a wooden key
   spawnKey('wood');
 }
 
