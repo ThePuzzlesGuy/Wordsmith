@@ -2,16 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Locks & Letters</title>
 </head>
 <body>
   <div class="topbar">
     <div class="topbar-inner">
       <h1 class="title">LOCKS & LETTERS</h1>
-      <div>
-        <button class="icon-btn" id="helpBtn">?</button>
-      </div>
+      <div><button class="icon-btn" id="helpBtn">?</button></div>
     </div>
   </div>
 
@@ -27,7 +25,7 @@
         </div>
       </div>
 
-      <div class="inventory-dock" style="display:flex; justify-content:center; align-items:center; gap:18px; margin:16px 0 28px;">
+      <div class="inventory-dock" style="display:flex;justify-content:center;align-items:center;gap:18px;margin:16px 0 28px;">
         <div class="inventory" id="inventory" aria-label="Inventory">
           <div class="key-grid" id="keys">
             <div class="inv-slot"></div>
@@ -54,7 +52,7 @@
           <img class="scroll-icon" src="sprites/scroll.png" alt="" />
           <span id="scroll-count" class="scroll-count">0</span>
         </div>
-        <div class="hearts" id="hearts" style="grid-column: 1 / -1; margin-top:8px;">
+        <div class="hearts" id="hearts" style="grid-column:1 / -1;margin-top:8px;">
           <img class="heart" src="sprites/heart.png" alt="heart" />
           <img class="heart" src="sprites/heart.png" alt="heart" />
           <img class="heart" src="sprites/heart.png" alt="heart" />
@@ -114,6 +112,16 @@
   </div>
 
   <script src="data/boards.js"></script>
+
+  <script type="module" src="js/state.js"></script>
+  <script type="module" src="js/utils.js"></script>
+  <script type="module" src="js/ui.js"></script>
+  <script type="module" src="js/inventory.js"></script>
+  <script type="module" src="js/locks.js"></script>
+  <script type="module" src="js/forge.js"></script>
+  <script type="module" src="js/progression.js"></script>
+  <script type="module" src="js/wheel.js"></script>
+  <script type="module" src="js/board.js"></script>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
