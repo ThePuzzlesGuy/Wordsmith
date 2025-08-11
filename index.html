@@ -93,13 +93,16 @@
         </div>
       </div>
 
-      <!-- NEW: Vault Safe drop target -->
+      <!-- Vault Safe drop target -->
       <div id="vault-safe" class="vault-safe" aria-label="Vault">
         <div class="vault-face">
           <img src="sprites/vault.png" alt="" class="vault-icon">
           <div class="vault-hint">Drop vault key</div>
         </div>
       </div>
+
+      <!-- NEW: Dedicated Vault Key slot (only accepts key_vault) -->
+      <div id="vault-slot" class="inv-slot vault-slot" aria-label="Vault key slot"></div>
     </footer>
   </main>
 
@@ -110,8 +113,6 @@
       <div id="popup-actions" class="popup-actions"></div>
     </div>
   </div>
-
-  <!-- REMOVED: durability/forge result popup -->
 
   <!-- === Prize Wheel Overlay (Safe Dial) === -->
   <div id="wheel-overlay" class="wheel-overlay hidden" aria-hidden="true">
