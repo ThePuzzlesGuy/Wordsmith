@@ -1,10 +1,12 @@
-import { showMessage } from './ui.js';
+import { showMessage } from '../ui/ui.js';
 import { spawnKey } from './inventory.js';
-import { maybeCheckLose } from './progression.js';
+import { maybeCheckLose } from '../progression/progression.js';
 
 export function initForge(){
   const forgeBtn = document.getElementById('forge-btn');
-  forgeBtn.addEventListener('click', async () => {
+  if (!forgeBtn) return;
+
+  forgeBtn.addEventListener('click', () => {
     const { a, b } = getCombinerSlots();
     const k1 = a.querySelector('.key');
     const k2 = b.querySelector('.key');
@@ -12,8 +14,6 @@ export function initForge(){
 
     const result = nextTier(k1.dataset.type);
     const label = result === 'pick' ? 'Lock Pick' : (result[0].toUpperCase() + result.slice(1) + ' key');
-
-    // lightweight confirm using the global popup (optional)
     const ok = window.confirm(`Forge these two keys into a ${label}?`);
     if (!ok) return;
 
@@ -26,6 +26,7 @@ export function initForge(){
 
 export function updateForgeButton(){
   const forgeBtn = document.getElementById('forge-btn');
+  if (!forgeBtn) return;
   const { a, b } = getCombinerSlots();
   const k1 = a.querySelector('.key');
   const k2 = b.querySelector('.key');
@@ -76,7 +77,6 @@ export function doCombine(){
   maybeCheckLose();
 }
 
-/* local helper */
 function getCombinerSlots(){
   const root = document.getElementById('smith');
   return { a: root.querySelector('.drop-slot[data-slot="a"]'), b: root.querySelector('.drop-slot[data-slot="b"]') };
