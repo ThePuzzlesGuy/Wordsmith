@@ -779,8 +779,9 @@ function placeVaultIcon(){
 }
 
 // ----- Prize Wheel implementation -----
-let spinsLeft = 0;              // exact spins available while overlay is open
-window._wheelAutoReroll = false; // global flag used across scopes
+let spinsLeft = 0;               // exact spins available while overlay is open
+window._wheelAutoReroll = false; // auto-reroll flag
+window._wheelPostCloseTask = null; // deferred action after overlay closes
 
 function initPrizeWheel(){
   const overlay = document.getElementById('wheel-overlay');
@@ -802,9 +803,10 @@ function initPrizeWheel(){
     "Wooden Key":"key_wood.png",
     "Combine 2 Keys":"lock_wood.png",
     "Lose a Key":"lose_key.png",
-    "Reveal Hint":"unlock.png",
+    "Reveal Hint":"scroll.png",
     "Scroll Peek":"scroll.png",
-    "Reroll":"safe.png"
+    "Reroll":"key_pick.png",
+    "+1 Spin":"heart.png"
   };
 
   const PRIZES=[
@@ -818,6 +820,7 @@ function initPrizeWheel(){
     {label:"Reroll",weight:3},
     {label:"Lose a Key",weight:2},
     {label:"Stone Key",weight:5},
+    {label:"+1 Spin",weight:3},
     {label:"Lose a Key",weight:2}
   ];
 
@@ -916,7 +919,7 @@ function initPrizeWheel(){
     safeDoor.classList.add("show");
     requestAnimationFrame(()=>safeDoor.classList.add("open"));
 
-    // award prize
+    // award prize (some prizes may defer actions)
     applyPrize(p.label);
 
     // update button states
@@ -943,10 +946,15 @@ function initPrizeWheel(){
       showMessage(msg);
       updateButtons();
     } else {
-      // no extra spins — close after a short delay
+      // no extra spins — close after a short delay, then run any deferred task
       setTimeout(() => {
         closeOverlay();
         showMessage(msg);
+        if (typeof window._wheelPostCloseTask === 'function') {
+          const fn = window._wheelPostCloseTask;
+          window._wheelPostCloseTask = null;
+          setTimeout(fn, 50);
+        }
       }, CLOSE_DELAY);
     }
   }
@@ -970,8 +978,7 @@ function initPrizeWheel(){
   function updateButtons(){
     if (safeDoor.classList.contains('open')) {
       if (spinsLeft > 0) {
-        // only true when prize was +1 Spin
-        spinBtn.textContent = 'Spin again';
+        spinBtn.textContent = 'Spin again';     // only after +1 Spin
         spinBtn.disabled = false;
         closeBtn.style.display = 'none';
       } else {
@@ -998,8 +1005,8 @@ function initPrizeWheel(){
       return;
     }
 
-    if (spinsLeft <= 0) return;
-    spinsLeft -= 1;             // consume a spin (they start with 1)
+    if (spinsLeft <= 0) return; // safety
+    spinsLeft -= 1;             // consume a spin
     const i = pickWeightedIndex();
     spinToIndex(i);
     updateButtons();
@@ -1007,7 +1014,6 @@ function initPrizeWheel(){
 
   closeBtn.addEventListener('click', closeOverlay);
 
-  // open function used by game
   window.openPrizeWheel = function(){ openOverlay(); };
 
   draw();
@@ -1021,23 +1027,63 @@ function applyPrize(label){
     case 'Gold Key': spawnKey('gold'); break;
     case 'Stone Key': spawnKey('stone'); break;
     case 'Wooden Key': spawnKey('wood'); break;
-    case 'Reroll': window._wheelAutoReroll = true; break; // auto-spin again
-    case '+1 Spin': spinsLeft += 1; break;                // only +1 Spin grants another spin
+    case 'Reroll': window._wheelAutoReroll = true; break;       // auto-spin again
+    case '+1 Spin': spinsLeft += 1; break;                      // only +1 Spin grants another spin
     case 'Reveal Hint': openRandomWrong(1); break;
     case 'Scroll Peek': peekScroll(); break;
     case 'Combine 2 Keys': combineTwoKeys(); break;
-    case 'Lose a Key': loseRandomKey(); break;
+    case 'Lose a Key':
+      // defer the fancy animation until after overlay closes
+      window._wheelPostCloseTask = () => { loseRandomKey(); };
+      break;
     default: break;
   }
 }
 
+/* ==== Fancy lose-a-key sequence ==== */
 function loseRandomKey(){
   const keyGrid = document.getElementById('keys');
+  if (!keyGrid) return;
   const keys = Array.from(keyGrid.querySelectorAll('.key'));
   if (keys.length === 0) return;
-  const k = keys[Math.floor(Math.random()*keys.length)];
-  k.classList.add('inv-doomed');
-  setTimeout(()=>k.remove(), 240);
+
+  // Reset and light everyone up
+  keys.forEach(k => {
+    k.classList.remove('inv-dim','inv-doomed');
+    k.classList.add('inv-lit');
+  });
+
+  if (keys.length === 1) {
+    const target = keys[0];
+    setTimeout(() => {
+      target.classList.add('inv-doomed');
+      target.classList.remove('inv-lit');
+      setTimeout(() => target.remove(), 280);
+    }, 480);
+    return;
+  }
+
+  const order = shuffle(keys.slice());     // random elimination order
+  const doomed = order[order.length - 1];  // last remaining will be deleted
+  let i = 0;
+
+  const stepTime = 180;
+  function step(){
+    if (i < order.length - 1) {
+      const k = order[i++];
+      k.classList.remove('inv-lit');
+      k.classList.add('inv-dim');
+      setTimeout(step, stepTime);
+    } else {
+      // pause on the winner, then pop it
+      setTimeout(() => {
+        doomed.classList.add('inv-doomed');
+        doomed.classList.remove('inv-lit');
+        setTimeout(() => doomed.remove(), 280);
+      }, 260);
+    }
+  }
+  setTimeout(step, stepTime);
 }
 
 function combineTwoKeys(){
