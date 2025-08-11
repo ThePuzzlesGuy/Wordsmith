@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Locks & Letters</title>
+  <title>WORDSMITH</title>
 
-  <!-- CSS: order matters (base first, overlays last) -->
+  <!-- Your existing split CSS files -->
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/locks.css">
   <link rel="stylesheet" href="css/board.css">
@@ -24,11 +24,10 @@
     </div>
   </div>
 
-  <!-- App -->
   <div id="app">
-    <!-- Left: play area -->
+    <!-- LEFT: play area -->
     <div class="play-area">
-      <!-- Locks row -->
+      <!-- Locks -->
       <div class="locks-strip">
         <div id="locks" class="locks" aria-label="Locks row"></div>
       </div>
@@ -51,15 +50,13 @@
             <div class="inv-slot"></div>
           </div>
         </div>
-
-        <!-- vault drop target -->
         <div id="vault-safe" aria-label="Vault safe">
           <img src="sprites/vault.png" alt="Vault">
         </div>
       </div>
     </div>
 
-    <!-- Right: sidebar -->
+    <!-- RIGHT: sidebar -->
     <aside class="sidebar">
       <!-- Progress -->
       <div class="card progress-card">
@@ -111,7 +108,7 @@
     </div>
   </div>
 
-  <!-- Prize wheel overlay -->
+  <!-- Wheel overlay -->
   <div id="wheel-overlay" class="wheel-overlay hidden" aria-hidden="true">
     <div class="wheel-stage">
       <canvas id="wheel-canvas" width="600" height="600"></canvas>
@@ -134,19 +131,17 @@
     </div>
   </div>
 
-  <!-- JS (your existing filenames; order matters) -->
-  <script defer src="js/state.js"></script>
-  <script defer src="js/utils.js"></script>
+  <script defer src="state.js"></script>
+  <script defer src="utils.js"></script>
 
-  <script defer src="js/board.js"></script>
-  <script defer src="js/locks.js"></script>
-  <script defer src="js/inventory.js"></script>
-  <script defer src="js/forge.js"></script>
+  <script defer src="ui.js"></script>
+  <script defer src="locks.js"></script>
+  <script defer src="board.js"></script>
+  <script defer src="inventory.js"></script>
+  <script defer src="forge.js"></script>
+  <script defer src="progression.js"></script>
+  <script defer src="wheel.js"></script>
 
-  <script defer src="js/progression.js"></script>
-  <script defer src="js/ui.js"></script>
-  <script defer src="js/wheel.js"></script>
-
-  <script defer src="js/main.js"></script>
+  <script defer src="main.js"></script>
 </body>
 </html>
