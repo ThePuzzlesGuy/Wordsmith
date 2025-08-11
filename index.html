@@ -1,128 +1,141 @@
-<!doctype html>
+index.html
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>LOCKS & LETTERS</title>
-
-  <!-- Styles -->
-  <link rel="stylesheet" href="css/base.css">
-  <link rel="stylesheet" href="css/locks.css">
-  <link rel="stylesheet" href="css/board.css">
-  <link rel="stylesheet" href="css/inventory.css">
-  <link rel="stylesheet" href="css/forge.css">
-  <link rel="stylesheet" href="css/sidebar.css">
-  <link rel="stylesheet" href="css/popup.css">
-  <link rel="stylesheet" href="css/wheel.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wordsmith</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="topbar">
+  <header class="topbar">
     <div class="topbar-inner">
-      <h1 class="title">LOCKS & LETTERS</h1>
-      <div><button class="icon-btn" id="helpBtn">?</button></div>
+      <h1 class="title">WORDSMITH</h1>
+      <div class="topbar-icons">
+        <button class="icon-btn" aria-label="Profile">👤</button>
+        <button class="icon-btn" aria-label="Settings">⚙️</button>
+      </div>
     </div>
-  </div>
+  </header>
 
-  <div id="app">
-    <div class="play-area">
+  <main id="app">
+    <!-- Left column -->
+    <section class="play-area">
       <div class="locks-strip">
-        <div class="locks" id="locks"></div>
+        <div id="locks" class="locks"></div>
       </div>
 
       <div class="board-wrap">
         <div class="parchment">
-          <div id="letter-grid" class="grid" aria-label="Letter Grid"></div>
+          <div id="letter-grid" class="grid"></div>
         </div>
       </div>
+    </section>
 
-      <div class="inventory-dock">
-        <div class="inventory" id="inventory" aria-label="Inventory">
-          <div class="key-grid" id="keys">
-            <div class="inv-slot"></div>
-            <div class="inv-slot"></div>
-            <div class="inv-slot"></div>
-            <div class="inv-slot"></div>
-            <div class="inv-slot"></div>
-          </div>
-        </div>
-
-        <div id="vault-safe" aria-label="Vault Safe">
-          <img alt="Safe" src="sprites/vault.png" />
-        </div>
-      </div>
-    </div>
-
+    <!-- Right column -->
     <aside class="sidebar">
       <div class="card progress-card">
-        <div>
-          <span id="theme"></span>
-          <div class="theme-label">Theme</div>
-          <div id="theme" class="theme-value">—</div>
+        <div class="hearts" id="hearts">
+          <img src="sprites/heart.png" alt="" class="heart">
+          <img src="sprites/heart.png" alt="" class="heart">
+          <img src="sprites/heart.png" alt="" class="heart">
         </div>
         <div class="scrolls">
-          <img class="scroll-icon" src="sprites/scroll.png" alt="" />
+          <img src="sprites/scroll.png" alt="" class="scroll-icon">
           <span id="scroll-count" class="scroll-count">0</span>
         </div>
-        <div class="hearts" id="hearts" style="grid-column:1 / -1;margin-top:8px;">
-          <img class="heart" src="sprites/heart.png" alt="heart" />
-          <img class="heart" src="sprites/heart.png" alt="heart" />
-          <img class="heart" src="sprites/heart.png" alt="heart" />
-        </div>
       </div>
 
-      <div class="card smith-card" id="smith">
-        <div class="smith-top">
-          <div class="drop-slot" data-slot="a">
-            <span class="slot-hint">Drop key</span>
-          </div>
-          <div class="plus-icon">+</div>
-          <div class="drop-slot" data-slot="b">
-            <span class="slot-hint">Drop key</span>
-          </div>
-        </div>
-        <button id="forge-btn" class="btn forge-btn" disabled>Forge</button>
+      <div id="theme-card" class="card theme-card">
+        <div class="theme-label">Theme</div>
+        <div id="theme" class="theme-value">—</div>
       </div>
 
-      <div class="card trash-bin" id="trash" aria-label="Trash">
-        <div class="trash-icon">🗑️</div>
+      <div class="legend card">
+        <ul>
+          <li><img class="legend-key" src="sprites/key_wood.png" alt=""> 3 Letters</li>
+          <li><img class="legend-key" src="sprites/key_stone.png" alt=""> 4 Letters</li>
+          <li><img class="legend-key" src="sprites/key_gold.png" alt=""> 5+ Letters</li>
+        </ul>
+      </div>
+
+      <!-- Smithing panel -->
+      <div class="smith card">
+        <div id="smith" class="smith-card" aria-label="Forge keys">
+          <div class="smith-top">
+            <div class="drop-slot" data-slot="a" aria-label="Drop key"><span class="slot-hint">Drop key</span></div>
+            <div class="plus-icon">+</div>
+            <div class="drop-slot" data-slot="b" aria-label="Drop key"><span class="slot-hint">Drop key</span></div>
+          </div>
+          <button id="forge-btn" class="btn primary forge-btn" disabled>Forge</button>
+        </div>
+
+        <div id="trash" class="drop-zone trash-bin" aria-label="Trash">
+          <div class="trash-lid"></div>
+          <div class="trash-body"></div>
+          <div class="trash-text">Drop to delete</div>
+        </div>
       </div>
     </aside>
-  </div>
 
-  <div id="popup" class="popup hidden" aria-hidden="true">
+    <!-- Inventory dock -->
+    <footer class="inventory-dock">
+      <div id="inventory" class="inventory">
+        <div id="inventory-ui">
+          <div class="inventory-section">
+            <div id="keys" class="key-grid">
+              <div class="inv-slot"></div>
+              <div class="inv-slot"></div>
+              <div class="inv-slot"></div>
+              <div class="inv-slot"></div>
+              <div class="inv-slot"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NEW: Vault Safe drop target -->
+      <div id="vault-safe" class="vault-safe" aria-label="Vault">
+        <div class="vault-face">
+          <img src="sprites/vault.png" alt="" class="vault-icon">
+          <div class="vault-hint">Drop vault key</div>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <!-- Popup: messages + actions -->
+  <div id="popup" class="popup hidden" data-dismiss="">
     <div class="popup-card">
-      <div id="popup-text">Message</div>
+      <div id="popup-text"></div>
       <div id="popup-actions" class="popup-actions"></div>
     </div>
   </div>
 
+  <!-- REMOVED: durability/forge result popup -->
+
+  <!-- === Prize Wheel Overlay (Safe Dial) === -->
   <div id="wheel-overlay" class="wheel-overlay hidden" aria-hidden="true">
     <div class="wheel-stage">
-      <canvas id="wheel-canvas" width="600" height="600"></canvas>
-
-      <div id="safeDoor" class="safeDoor">
+      <canvas id="wheel-canvas" width="900" height="900" aria-label="Prize wheel"></canvas>
+      <div class="safeDoor" id="safeDoor">
+        <div class="plate">
+          <div class="bolts"><div class="bolt"></div><div class="bolt"></div><div class="bolt"></div></div>
+        </div>
         <div class="interior">
-          <div class="prize">
-            <img id="prizeImg" src="sprites/key_gold.png" alt="prize" />
+          <div class="lip"></div>
+          <div class="prize" id="prizeCard">
+            <img id="prizeImg" alt="Prize" src="" />
           </div>
         </div>
-        <div class="plate"></div>
-        <div class="bolts">
-          <div class="bolt"></div>
-          <div class="bolt"></div>
-          <div class="bolt"></div>
-        </div>
-        <div class="lip"></div>
       </div>
-
       <div class="wheel-controls">
-        <button id="spinBtn" class="btn primary">Spin</button>
-        <button id="wheelCloseBtn" class="btn">Close</button>
+        <button id="spinBtn" type="button" class="btn primary">Spin</button>
+        <button id="wheelCloseBtn" type="button" class="btn">Close</button>
       </div>
     </div>
   </div>
 
-  <!-- App entry (ES modules import the rest) -->
-  <script type="module" src="js/main.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
