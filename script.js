@@ -726,10 +726,10 @@ function showGambleBar(successChance, resolve){
   overlay.appendChild(card);
   document.body.appendChild(overlay);
 
-   // Animate cursor ping-pong then ease into a final stop.
-  const width = bar.getBoundingClientRect().width || 320; // <- dynamic width
-  const speedHz = 1.2;
-  const brakeMs = 520;
+  // Animate cursor ping-pong then ease into a final stop.
+  const width = bar.getBoundingClientRect().width || 320; // dynamic width
+  const speedHz = 1.2;        // slower sweep
+  const brakeMs = 520;        // ease-out duration
   let start = performance.now();
   const minStop = 1600, maxStop = 2600;
   const stopAt = start + (minStop + Math.random()*(maxStop-minStop));
@@ -769,7 +769,7 @@ function showGambleBar(successChance, resolve){
     }
   }
   raf = requestAnimationFrame(step);
-}
+} // <-- closed properly
 
 /* ========== PROGRESSION & FAIL STATE ========== */
 function updateProgressUI(){
@@ -875,6 +875,7 @@ function showMessage(msg, opts = {}) {
   const duration = (opts && typeof opts.duration === 'number') ? opts.duration : (opts.sticky ? 2200 : 1600);
   window._popupTimer = setTimeout(() => hidePopup(), duration);
 }
+
 function showContinue(message, buttonLabel="Continue"){
   return new Promise(resolve => {
     const popup = document.getElementById('popup');
@@ -883,12 +884,39 @@ function showContinue(message, buttonLabel="Continue"){
     if (!popup || !txt || !actions) { resolve(); return; }
     clearPopupTimer(); txt.textContent = message; actions.innerHTML = "";
     const btn = document.createElement('button'); btn.className = 'btn primary'; btn.textContent = buttonLabel;
-    btn.addEventListener('click', () => { popup.classList.add('hidden'); popup.dataset.dismiss = ""; resolve(); });
+    btn.addEventListener('click', () => {
+      popup.classList.add('hidden');
+      popup.dataset.dismiss = "";
+      popup.dispatchEvent(new CustomEvent('popup:hidden', { bubbles: true })); // fire event here too
+      resolve();
+    });
     actions.appendChild(btn);
     popup.dataset.dismiss = "locked"; popup.classList.remove('hidden');
   });
 }
-function hidePopup(){ const p = document.getElementById('popup'); if (p?.dataset.dismiss === 'locked') return; clearPopupTimer(); p?.classList.add('hidden'); }
+
+function hidePopup(){
+  const p = document.getElementById('popup');
+  if (p?.dataset.dismiss === 'locked') return;
+  clearPopupTimer();
+  if (!p) return;
+  p.classList.add('hidden');
+  p.dispatchEvent(new CustomEvent('popup:hidden', { bubbles: true }));
+}
+
+// Wait for the popup to finish hiding before continuing an action
+function waitForPopupToClose(){
+  return new Promise(resolve => {
+    const p = document.getElementById('popup');
+    if (!p || p.classList.contains('hidden')) { resolve(); return; }
+    const onHidden = () => {
+      p.removeEventListener('popup:hidden', onHidden);
+      setTimeout(resolve, 120); // small extra beat for any fade-out
+    };
+    p.addEventListener('popup:hidden', onHidden, { once: true });
+  });
+}
+
 function confirmChoice(message, yesLabel="Yes", noLabel="No"){
   return new Promise(resolve => {
     const popup = document.getElementById('popup');
@@ -898,8 +926,8 @@ function confirmChoice(message, yesLabel="Yes", noLabel="No"){
     clearPopupTimer(); txt.textContent = message; actions.innerHTML = "";
     const yes = document.createElement('button'); yes.className = 'btn primary'; yes.textContent = yesLabel;
     const no  = document.createElement('button'); no.className  = 'btn'; no.textContent = noLabel;
-    yes.addEventListener('click', () => { popup.classList.add('hidden'); popup.dataset.dismiss=""; resolve(true); });
-    no .addEventListener('click', () => { popup.classList.add('hidden'); popup.dataset.dismiss=""; resolve(false); });
+    yes.addEventListener('click', () => { popup.classList.add('hidden'); popup.dataset.dismiss=""; popup.dispatchEvent(new CustomEvent('popup:hidden', { bubbles: true })); resolve(true); });
+    no .addEventListener('click', () => { popup.classList.add('hidden'); popup.dataset.dismiss=""; popup.dispatchEvent(new CustomEvent('popup:hidden', { bubbles: true })); resolve(false); });
     popup.dataset.dismiss = "locked"; actions.appendChild(yes); actions.appendChild(no); popup.classList.remove('hidden');
   });
 }
@@ -998,8 +1026,8 @@ function initPrizeWheel(){
     const tipR=R*0.82, baseR=R*0.92, w=R*0.06, ax=POINTER_ANGLE;
     const nx=Math.cos(ax), ny=Math.sin(ax), tx=-ny, ty=nx;
     const tip={x:C.x+nx*tipR,y:C.y+ny*tipR};
-    const bl={x:C.x+nx*baseR+tx*w,y:C.y+ny*baseR+ty*w};
-    const br={x:C.x+nx*baseR-tx*w,y:C.y+ny*baseR-ty*w};
+    const bl={x:C.x+nx*baseR+tx*w,y	C.y+ny*baseR+ty*w};
+    const br={x	C.x+nx*baseR-tx*w,y	C.y+ny*baseR-ty*w};
     ctx.fillStyle="#bfc6d0";
     ctx.beginPath(); ctx.moveTo(tip.x,tip.y); ctx.lineTo(bl.x,bl.y); ctx.lineTo(br.x,br.y); ctx.closePath();
     ctx.shadowColor="rgba(0,0,0,.4)"; ctx.shadowBlur=6; ctx.fill(); ctx.shadowBlur=0;
@@ -1063,7 +1091,6 @@ function initPrizeWheel(){
 
     const msg = prizeMessage(p.label);
     const CLOSE_DELAY = 1100;
-    const AFTER_HIDE_DELAY = 550;
 
     if (window._wheelAutoReroll) {
       setTimeout(() => {
@@ -1086,7 +1113,7 @@ function initPrizeWheel(){
         if (typeof window._wheelPostCloseTask === 'function') {
           const fn = window._wheelPostCloseTask;
           window._wheelPostCloseTask = null;
-          setTimeout(fn, AFTER_HIDE_DELAY);
+          waitForPopupToClose().then(fn); // run AFTER the popup disappears
         }
       }, CLOSE_DELAY);
     }
