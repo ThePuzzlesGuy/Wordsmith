@@ -967,118 +967,132 @@ function initPrizeWheel(){
 
   const canvas = document.getElementById('wheel-canvas');
   const ctx = canvas.getContext('2d');
-  const R = canvas.width/2;
-  const C = {x:R, y:R};
-  const POINTER_ANGLE = -Math.PI/2;
+  const R = canvas.width / 2;
+  const C = { x: R, y: R };
+  const POINTER_ANGLE = -Math.PI / 2;
 
-  const spinBtn = document.getElementById('spinBtn');
+  const spinBtn  = document.getElementById('spinBtn');
   const closeBtn = document.getElementById('wheelCloseBtn');
   const safeDoor = document.getElementById('safeDoor');
 
-  const SPRITES={
-    "Gold Key":"key_gold.png",
-    "Stone Key":"key_stone.png",
-    "Wooden Key":"key_wood.png",
-    "Lose a Key":"lose_key.png",
-    "Reveal Hint":"lock_gold.png",
-    "Scroll Peek":"scroll.png",
-    "+1 Spin":"vault.png"
+  const SPRITES = {
+    "Gold Key"   : "key_gold.png",
+    "Stone Key"  : "key_stone.png",
+    "Wooden Key" : "key_wood.png",
+    "Lose a Key" : "lose_key.png",
+    "Reveal Hint": "lock_gold.png",
+    "Scroll Peek": "scroll.png",
+    "+1 Spin"    : "vault.png"
   };
 
-  const PRIZES=[
-    {label:"Gold Key",weight:1},
-    {label:"Stone Key",weight:5},
+  const PRIZES = [
+    {label:"Gold Key",   weight:1},
+    {label:"Stone Key",  weight:5},
     {label:"Reveal Hint",weight:3},
-    {label:"Lose a Key",weight:2},
-    {label:"Wooden Key",weight:4},
+    {label:"Lose a Key", weight:2},
+    {label:"Wooden Key", weight:4},
     {label:"Scroll Peek",weight:2},
-    {label:"Lose a Key",weight:2},
-    {label:"Stone Key",weight:5},
-    {label:"+1 Spin",weight:3},
-    {label:"Lose a Key",weight:2}
+    {label:"Lose a Key", weight:2},
+    {label:"Stone Key",  weight:5},
+    {label:"+1 Spin",    weight:3},
+    {label:"Lose a Key", weight:2}
   ];
 
   let angle = 0;
 
   function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    const bg=ctx.createRadialGradient(C.x,C.y,R*0.2,C.x,C.y,R);
-    bg.addColorStop(0,"#2b3246"); bg.addColorStop(1,"#0f1320");
-    ctx.fillStyle=bg; ctx.beginPath(); ctx.arc(C.x,C.y,R,0,Math.PI*2); ctx.fill();
 
-    ctx.lineWidth=R*0.06; ctx.strokeStyle="#3a4256"; ctx.beginPath(); ctx.arc(C.x,C.y,R*0.82,0,Math.PI*2); ctx.stroke();
-    const rOuter=R*0.78;
-    for(let i=0;i<100;i++){
-      const a=angle+i*(2*Math.PI/100), isMajor=i%10===0, isMid=!isMajor&&i%5===0;
-      const len=isMajor?R*0.07:isMid?R*0.045:R*0.03;
-      const ix=C.x+Math.cos(a)*(rOuter-len), iy=C.y+Math.sin(a)*(rOuter-len);
-      const ox=C.x+Math.cos(a)*rOuter, oy=C.y+Math.sin(a)*rOuter;
-      ctx.strokeStyle=`rgba(231,236,245,${isMajor?1:isMid?0.75:0.55})`; ctx.lineWidth=isMajor?2.2:isMid?1.8:1.2;
+    const bg = ctx.createRadialGradient(C.x, C.y, R*0.2, C.x, C.y, R);
+    bg.addColorStop(0, "#2b3246");
+    bg.addColorStop(1, "#0f1320");
+    ctx.fillStyle = bg;
+    ctx.beginPath(); ctx.arc(C.x, C.y, R, 0, Math.PI*2); ctx.fill();
+
+    ctx.lineWidth = R*0.06;
+    ctx.strokeStyle = "#3a4256";
+    ctx.beginPath(); ctx.arc(C.x, C.y, R*0.82, 0, Math.PI*2); ctx.stroke();
+
+    const rOuter = R*0.78;
+    for (let i=0;i<100;i++){
+      const a = angle + i*(2*Math.PI/100);
+      const isMajor = i%10===0, isMid = !isMajor && i%5===0;
+      const len = isMajor ? R*0.07 : isMid ? R*0.045 : R*0.03;
+      const ix = C.x + Math.cos(a)*(rOuter - len);
+      const iy = C.y + Math.sin(a)*(rOuter - len);
+      const ox = C.x + Math.cos(a)*rOuter;
+      const oy = C.y + Math.sin(a)*rOuter;
+      ctx.strokeStyle = `rgba(231,236,245,${isMajor?1:isMid?0.75:0.55})`;
+      ctx.lineWidth = isMajor ? 2.2 : isMid ? 1.8 : 1.2;
       ctx.beginPath(); ctx.moveTo(ix,iy); ctx.lineTo(ox,oy); ctx.stroke();
     }
 
-    const hub=ctx.createRadialGradient(C.x-10,C.y-10,10,C.x,C.y,R*0.45);
+    const hub = ctx.createRadialGradient(C.x-10, C.y-10, 10, C.x, C.y, R*0.45);
     hub.addColorStop(0,"#cdd5df"); hub.addColorStop(1,"#6c778c");
-    ctx.fillStyle=hub; ctx.beginPath(); ctx.arc(C.x,C.y,R*0.36,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle="#31394d"; ctx.beginPath(); ctx.arc(C.x,C.y,R*0.035,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = hub;
+    ctx.beginPath(); ctx.arc(C.x, C.y, R*0.36, 0, Math.PI*2); ctx.fill();
 
-// pointer
-const tipR = R * 0.82, baseR = R * 0.92, w = R * 0.06, ax = POINTER_ANGLE;
-const nx = Math.cos(ax), ny = Math.sin(ax), tx = -ny, ty = nx;
+    ctx.fillStyle = "#31394d";
+    ctx.beginPath(); ctx.arc(C.x, C.y, R*0.035, 0, Math.PI*2); ctx.fill();
 
-const tip = { x: C.x + nx * tipR, y: C.y + ny * tipR };
-const bl  = { x: C.x + nx * baseR + tx * w, y: C.y + ny * baseR + ty * w };
-const br  = { x: C.x + nx * baseR - tx * w, y: C.y + ny * baseR - ty * w };
+    // pointer
+    const tipR = R*0.82, baseR = R*0.92, w = R*0.06, ax = POINTER_ANGLE;
+    const nx = Math.cos(ax), ny = Math.sin(ax), tx = -ny, ty = nx;
 
-ctx.fillStyle = "#bfc6d0";
-ctx.beginPath();
-ctx.moveTo(tip.x, tip.y);
-ctx.lineTo(bl.x, bl.y);
-ctx.lineTo(br.x, br.y);
-ctx.closePath();
-ctx.shadowColor = "rgba(0,0,0,.4)";
-ctx.shadowBlur = 6;
-ctx.fill();
-ctx.shadowBlur = 0;
+    const tip = { x: C.x + nx*tipR,   y: C.y + ny*tipR };
+    const bl  = { x: C.x + nx*baseR + tx*w, y: C.y + ny*baseR + ty*w };
+    const br  = { x: C.x + nx*baseR - tx*w, y: C.y + ny*baseR - ty*w };
 
-ctx.fillStyle = "#7e8794";
-const capR = w * 0.9;
-const capC = { x: C.x + nx * (baseR + capR * 0.2), y: C.y + ny * (baseR + capR * 0.2) };
-ctx.beginPath();
-ctx.arc(capC.x, capC.y, capR, 0, Math.PI * 2);
-ctx.fill();
+    ctx.fillStyle = "#bfc6d0";
+    ctx.beginPath(); ctx.moveTo(tip.x, tip.y); ctx.lineTo(bl.x, bl.y); ctx.lineTo(br.x, br.y); ctx.closePath();
+    ctx.shadowColor = "rgba(0,0,0,.4)"; ctx.shadowBlur = 6; ctx.fill(); ctx.shadowBlur = 0;
+
+    ctx.fillStyle = "#7e8794";
+    const capR = w*0.9;
+    const capC = { x: C.x + nx*(baseR + capR*0.2), y: C.y + ny*(baseR + capR*0.2) };
+    ctx.beginPath(); ctx.arc(capC.x, capC.y, capR, 0, Math.PI*2); ctx.fill();
+  } // <<— close draw()
+
+  // weighted picker (one copy only)
+  const totalWeight = PRIZES.reduce((s, p) => s + p.weight, 0);
+  function pickWeightedIndex(){
+    const r = Math.random();
+    let s = 0;
+    for (let i = 0; i < PRIZES.length; i++) {
+      s += PRIZES[i].weight / totalWeight;
+      if (r <= s) return i;
+    }
+    return PRIZES.length - 1;
   }
-const totalWeight = PRIZES.reduce((s, p) => s + p.weight, 0);
-function pickWeightedIndex(){
-  const r = Math.random();
-  let s = 0;
-  for (let i = 0; i < PRIZES.length; i++) {
-    s += PRIZES[i].weight / totalWeight;
-    if (r <= s) return i;
-  }
-  return PRIZES.length - 1;
-}
-  
-const totalWeight = PRIZES.reduce((s, p) => s + p.weight, 0);
-function pickWeightedIndex(){ /* ...as above... */ }
+
   function spinToIndex(index){
-    const n=PRIZES.length, step=2*Math.PI/n, targetAngleBase=POINTER_ANGLE-index*step-step/2;
-    const turns=6+Math.floor(Math.random()*2), current=angle; let target=targetAngleBase;
-    while(target>current-2*Math.PI*turns) target-=2*Math.PI;
+    const n = PRIZES.length;
+    const step = 2*Math.PI/n;
+    const targetAngleBase = POINTER_ANGLE - index*step - step/2;
 
-    const start=performance.now(), dur=3800;
-    const ease=t=>1-Math.pow(1-t,3);
+    const turns = 6 + Math.floor(Math.random()*2);
+    const current = angle;
+    let target = targetAngleBase;
+    while (target > current - 2*Math.PI*turns) target -= 2*Math.PI;
 
-    spinBtn.disabled=true;
+    const start = performance.now(), dur = 3800;
+    const ease  = t => 1 - Math.pow(1 - t, 3);
+
+    spinBtn.disabled = true;
     safeDoor.classList.remove("open","show");
-    canvas.classList.remove('hidden');
+    canvas.classList.remove("hidden");
 
     (function loop(now){
-      const t = Math.max(0, Math.min(1, (now-start)/dur));
-      angle = current + (target-current) * ease(t);
+      const t = Math.max(0, Math.min(1, (now - start) / dur));
+      angle = current + (target - current) * ease(t);
       draw();
-      if (t<1){ requestAnimationFrame(loop); }
-      else { angle=targetAngleBase; draw(); spinBtn.disabled=false; revealPrize(PRIZES[index]); }
+      if (t < 1) requestAnimationFrame(loop);
+      else {
+        angle = targetAngleBase;
+        draw();
+        spinBtn.disabled = false;
+        revealPrize(PRIZES[index]);
+      }
     })(performance.now());
   }
 
@@ -1103,7 +1117,7 @@ function pickWeightedIndex(){ /* ...as above... */ }
 
     canvas.classList.add("hidden");
     safeDoor.classList.add("show");
-    requestAnimationFrame(()=>safeDoor.classList.add("open"));
+    requestAnimationFrame(()=> safeDoor.classList.add("open"));
 
     applyPrize(p.label);
     updateButtons();
@@ -1116,8 +1130,7 @@ function pickWeightedIndex(){ /* ...as above... */ }
         window._wheelAutoReroll = false;
         safeDoor.classList.remove('open','show');
         canvas.classList.remove('hidden');
-        const i = pickWeightedIndex();
-        spinToIndex(i);
+        spinToIndex(pickWeightedIndex());
       }, 950);
       return;
     }
@@ -1147,6 +1160,7 @@ function pickWeightedIndex(){ /* ...as above... */ }
     draw();
     updateButtons();
   }
+
   function closeOverlay(){
     safeDoor.classList.remove('open','show');
     overlay.classList.add('hidden');
@@ -1185,8 +1199,7 @@ function pickWeightedIndex(){ /* ...as above... */ }
 
     if (spinsLeft <= 0) return;
     spinsLeft -= 1;
-    const i = pickWeightedIndex();
-    spinToIndex(i);
+    spinToIndex(pickWeightedIndex());
     updateButtons();
   });
 
@@ -1197,7 +1210,9 @@ function pickWeightedIndex(){ /* ...as above... */ }
   draw();
 }
 
-function openPrizeWheel(){ if (typeof window.openPrizeWheel === 'function') window.openPrizeWheel(); }
+function openPrizeWheel(){
+  if (typeof window.openPrizeWheel === 'function') window.openPrizeWheel();
+}
 
 // apply prize to game state
 function applyPrize(label){
