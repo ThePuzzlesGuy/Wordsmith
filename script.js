@@ -1047,7 +1047,20 @@ const capC = { x: C.x + nx * (baseR + capR * 0.2), y: C.y + ny * (baseR + capR *
 ctx.beginPath();
 ctx.arc(capC.x, capC.y, capR, 0, Math.PI * 2);
 ctx.fill();
-
+  }
+const totalWeight = PRIZES.reduce((s, p) => s + p.weight, 0);
+function pickWeightedIndex(){
+  const r = Math.random();
+  let s = 0;
+  for (let i = 0; i < PRIZES.length; i++) {
+    s += PRIZES[i].weight / totalWeight;
+    if (r <= s) return i;
+  }
+  return PRIZES.length - 1;
+}
+  
+const totalWeight = PRIZES.reduce((s, p) => s + p.weight, 0);
+function pickWeightedIndex(){ /* ...as above... */ }
   function spinToIndex(index){
     const n=PRIZES.length, step=2*Math.PI/n, targetAngleBase=POINTER_ANGLE-index*step-step/2;
     const turns=6+Math.floor(Math.random()*2), current=angle; let target=targetAngleBase;
