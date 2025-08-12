@@ -1022,25 +1022,31 @@ function initPrizeWheel(){
     ctx.fillStyle=hub; ctx.beginPath(); ctx.arc(C.x,C.y,R*0.36,0,Math.PI*2); ctx.fill();
     ctx.fillStyle="#31394d"; ctx.beginPath(); ctx.arc(C.x,C.y,R*0.035,0,Math.PI*2); ctx.fill();
 
-    // pointer
-    const tipR=R*0.82, baseR=R*0.92, w=R*0.06, ax=POINTER_ANGLE;
-    const nx=Math.cos(ax), ny=Math.sin(ax), tx=-ny, ty=nx;
-    const tip={x:C.x+nx*tipR,y:C.y+ny*tipR};
-    const bl={x:C.x+nx*baseR+tx*w,y	C.y+ny*baseR+ty*w};
-    const br={x	C.x+nx*baseR-tx*w,y	C.y+ny*baseR-ty*w};
-    ctx.fillStyle="#bfc6d0";
-    ctx.beginPath(); ctx.moveTo(tip.x,tip.y); ctx.lineTo(bl.x,bl.y); ctx.lineTo(br.x,br.y); ctx.closePath();
-    ctx.shadowColor="rgba(0,0,0,.4)"; ctx.shadowBlur=6; ctx.fill(); ctx.shadowBlur=0;
-    ctx.fillStyle="#7e8794"; const capR=w*0.9, capC={x:C.x+nx*(baseR+capR*0.2),y:C.y+ny*(baseR+capR*0.2)};
-    ctx.beginPath(); ctx.arc(capC.x,capC.y,capR,0,Math.PI*2); ctx.fill();
-  }
+// pointer
+const tipR = R * 0.82, baseR = R * 0.92, w = R * 0.06, ax = POINTER_ANGLE;
+const nx = Math.cos(ax), ny = Math.sin(ax), tx = -ny, ty = nx;
 
-  const totalWeight = PRIZES.reduce((s,p)=>s+p.weight,0);
-  function pickWeightedIndex(){
-    const r = Math.random(); let s = 0;
-    for(let i=0;i<PRIZES.length;i++){ s += PRIZES[i].weight/totalWeight; if(r<=s) return i; }
-    return PRIZES.length-1;
-  }
+const tip = { x: C.x + nx * tipR, y: C.y + ny * tipR };
+const bl  = { x: C.x + nx * baseR + tx * w, y: C.y + ny * baseR + ty * w };
+const br  = { x: C.x + nx * baseR - tx * w, y: C.y + ny * baseR - ty * w };
+
+ctx.fillStyle = "#bfc6d0";
+ctx.beginPath();
+ctx.moveTo(tip.x, tip.y);
+ctx.lineTo(bl.x, bl.y);
+ctx.lineTo(br.x, br.y);
+ctx.closePath();
+ctx.shadowColor = "rgba(0,0,0,.4)";
+ctx.shadowBlur = 6;
+ctx.fill();
+ctx.shadowBlur = 0;
+
+ctx.fillStyle = "#7e8794";
+const capR = w * 0.9;
+const capC = { x: C.x + nx * (baseR + capR * 0.2), y: C.y + ny * (baseR + capR * 0.2) };
+ctx.beginPath();
+ctx.arc(capC.x, capC.y, capR, 0, Math.PI * 2);
+ctx.fill();
 
   function spinToIndex(index){
     const n=PRIZES.length, step=2*Math.PI/n, targetAngleBase=POINTER_ANGLE-index*step-step/2;
